@@ -59,11 +59,11 @@ The project is currently in the requirements analysis and development environmen
 
 ## 6. Team Members
 
-| Member | Role |
-|---|---|
-| Haewon Kwon |  |
-| Dongjin Son |  |
-| Yena Jo |  |
+| Member | Department | University | email |
+|---|---|---|---|
+| Haewon Kwon | Department of Information Systems | Hanyang University | hw030302@hanyang.ac.kr |
+| Dongjin Son | Department of Information Systems | Hanyang University | djson322@hanyang.ac.kr |
+| Yena Jo | Department of Information Systems | Hanyang University | yena1743@hanyang.ac.kr |
 
 ## 7. Documentation
 
