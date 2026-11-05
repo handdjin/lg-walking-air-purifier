@@ -10,7 +10,7 @@ This project aims to develop a software-based simulation of an autonomous mobile
 
 The system integrates machine learning, autonomous pathfinding, and a mobile application to demonstrate proactive air purification in a virtual home environment.
 
-This project is developed as part of a university software engineering course in collaboration with LG Electronics.
+This project is developed as part of the Software Engineering course in the Department of Information Systems at Hanyang University, in collaboration with LG Electronics.
 
 ## 2. Key Technologies
 
@@ -61,9 +61,9 @@ The project is currently in the requirements analysis and development environmen
 
 | Member | Role |
 |---|---|
-| TBD | TBD |
-| TBD | TBD |
-| TBD | TBD |
+| Haewon Kwon |  |
+| Dongjin Son |  |
+| Yena Jo |  |
 
 ## 7. Documentation
 
