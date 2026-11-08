@@ -53,9 +53,11 @@ This repository is used for source code management, version control, and team co
 
 ## 5. Project Status
 
-**Current Stage:** Planning and System Design
+Current Stage: Initial Prototype Development
 
-The project is currently in the requirements analysis and development environment setup phase. Implementation details and documentation will be updated as development progresses.
+The initial mobile application, FastAPI backend, and room-based simulator have been implemented and successfully integrated.
+
+The current prototype supports basic room status retrieval and movement commands. Advanced simulation, AI prediction, autonomous navigation, and real-time communication will be implemented in subsequent development stages.
 
 ## 6. Team Members
 
@@ -70,3 +72,77 @@ The project is currently in the requirements analysis and development environmen
 Project reports, requirements, specifications, and related documentation will be maintained in the `docs/` directory.
 
 Document revisions and development progress will be tracked through Git commit history.
+
+## 8. How to Run
+
+### 8.1 Simulation
+
+Run the room-based simulator from the project root directory.
+
+```bash
+python3 -m simulation.demo
+```
+
+The simulator supports three rooms: `living_room`, `kitchen`, and `bedroom`.
+
+### 8.2 FastAPI Backend
+
+Create and activate a Python virtual environment if one has not already been configured.
+
+```bash
+cd backend
+python3 -m venv .venv
+source .venv/bin/activate
+pip install "fastapi[standard]"
+cd ..
+```
+
+Start the backend server from the project root directory.
+
+```bash
+python -m uvicorn backend.main:app --host 0.0.0.0 --port 8000
+```
+
+API documentation is available at:
+
+`http://127.0.0.1:8000/docs`
+
+**Available endpoints:**
+
+- `GET /status`: Retrieve the current room from the simulator.
+- `POST /move`: Move the simulated air purifier to the kitchen (temporary implementation).
+
+### 8.3 Mobile Application
+
+Open a separate terminal and run:
+
+```bash
+cd mobile
+npm install
+npx expo start
+```
+
+Open the application on an iPhone using Expo Go.
+
+The mobile application communicates with the FastAPI backend through the development computer's local IP address and port `8000`.
+
+The iPhone and development computer must be connected to the same local network, and the mobile application's server URL must match the computer's current IP address.
+
+## 9. Current Implementation
+
+The following features have been implemented and tested:
+
+- React Native and Expo mobile application running on an iPhone.
+- Basic mobile interface displaying the current room and a movement button.
+- FastAPI backend with status retrieval and movement endpoints.
+- Integration between FastAPI and the Python room-based simulator.
+- Successful communication between the iPhone application, FastAPI server, and simulator.
+
+**Future Development**
+
+- 2D virtual home environment and coordinate-based movement.
+- A* pathfinding and autonomous navigation.
+- Synthetic air quality data generation and PM2.5 simulation.
+- Machine learning-based pollution prediction.
+- Automatic purification and proactive movement.
+- Real-time updates and persistent data storage.
