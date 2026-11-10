@@ -1,11 +1,24 @@
 
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 from simulation import Simulator
 
 app = FastAPI()
-
-# 서버 실행 시 시뮬레이터 하나 생성
 simulator = Simulator()
+
+# Expo 웹 버전 테스트를 위한 CORS 설정
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# 앱에서 전달할 이동 요청 형식
+class MoveRequest(BaseModel):
+    target_room: str
 
 @app.get("/")
 def home():
@@ -16,9 +29,9 @@ def get_status():
     return simulator.get_state()
 
 @app.post("/move")
-def move():
+def move(request: MoveRequest):
     try:
-        return simulator.move_to("kitchen")
+        return simulator.move_to(request.target_room)
     except ValueError as e:
         raise HTTPException(
             status_code=400,

@@ -6,15 +6,25 @@ import {
   Button,
   StyleSheet,
   Alert,
+  Platform,
 } from 'react-native';
 
-// 자신의 MacBook IP 주소로 변경!
-const SERVER_URL = 'http://192.168.0.3:8000';
+// 맥북의 현재 IP 주소로 변경!
+const SERVER_URL =
+  Platform.OS === 'web'
+    ? 'http://127.0.0.1:8000'
+    : 'http://172.16.162.187:8000';
+
+const roomNames: Record<string, string> = {
+  living_room: '거실',
+  kitchen: '주방',
+  bedroom: '침실',
+};
 
 export default function HomeScreen() {
   const [currentRoom, setCurrentRoom] = useState('Loading...');
 
-  // 서버에서 현재 위치 가져오기
+  // 현재 위치 조회
   const fetchStatus = async () => {
     try {
       const response = await fetch(`${SERVER_URL}/status`);
@@ -26,15 +36,22 @@ export default function HomeScreen() {
       const data = await response.json();
       setCurrentRoom(data.current_room);
     } catch (error) {
-      Alert.alert('Error', 'Cannot connect to server');
+      setCurrentRoom('Connection Failed');
+      Alert.alert('Error', String(error));
     }
   };
 
-  // 서버에 이동 명령 보내기
-  const moveToKitchen = async () => {
+  // 원하는 방으로 이동
+  const moveToRoom = async (targetRoom: string) => {
     try {
       const response = await fetch(`${SERVER_URL}/move`, {
         method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          target_room: targetRoom,
+        }),
       });
 
       if (!response.ok) {
@@ -44,11 +61,10 @@ export default function HomeScreen() {
       const data = await response.json();
       setCurrentRoom(data.current_room);
     } catch (error) {
-      Alert.alert('Error', 'Move request failed');
+      Alert.alert('Error', String(error));
     }
   };
 
-  // 앱이 처음 실행될 때 서버 상태 확인
   useEffect(() => {
     fetchStatus();
   }, []);
@@ -58,11 +74,23 @@ export default function HomeScreen() {
       <Text style={styles.title}>My Home</Text>
 
       <Text style={styles.label}>Current Room</Text>
-      <Text style={styles.room}>{currentRoom}</Text>
+      <Text style={styles.room}>
+        {roomNames[currentRoom] ?? currentRoom}
+      </Text>
+
+      <Button
+        title="Move to Living Room"
+        onPress={() => moveToRoom('living_room')}
+      />
 
       <Button
         title="Move to Kitchen"
-        onPress={moveToKitchen}
+        onPress={() => moveToRoom('kitchen')}
+      />
+
+      <Button
+        title="Move to Bedroom"
+        onPress={() => moveToRoom('bedroom')}
       />
     </View>
   );
