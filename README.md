@@ -73,6 +73,7 @@ Project reports, requirements, specifications, and related documentation will be
 
 Document revisions and development progress will be tracked through Git commit history.
 
+HEAD
 ## 8. How to Run
 
 ### 8.1 Simulation
@@ -146,3 +147,46 @@ The following features have been implemented and tested:
 - Machine learning-based pollution prediction.
 - Automatic purification and proactive movement.
 - Real-time updates and persistent data storage.
+
+
+## How to Run
+
+### 1. Start the Backend Server
+
+From the project root:
+
+```bash
+source backend/.venv/bin/activate
+python -m uvicorn backend.main:app --host 0.0.0.0 --port 8000
+```
+
+### 2. Start the Mobile App
+
+Open a new terminal:
+
+```bash
+cd mobile
+npx expo start
+```
+
+Scan the QR code using Expo Go on an iPhone.
+
+Make sure the iPhone and Mac are connected to the same Wi-Fi network and that the SERVER_URL in mobile/src/app/index.tsx matches the Mac's local IP address.
+
+### 3. Error Handling Tests
+
+- Server unavailable: The app displays "Connection Failed".
+- Invalid room: The backend returns HTTP 400 without changing the current room.
+- Network connection failure: The app displays an error without crashing.
+
+### 4. API Endpoints
+
+- GET /status: Returns the current room.
+- POST /move: Moves the purifier to the requested room.
+
+Supported rooms:
+- living_room
+- kitchen
+- bedroom
+
+a7c71ef (docs: add run instructions and error handling tests)
