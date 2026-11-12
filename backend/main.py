@@ -37,3 +37,14 @@ def move(request: MoveRequest):
             status_code=400,
             detail=str(e)
         )
+@app.post("/step")
+def step():
+    return simulator.step()
+        
+@app.get("/map")
+def get_map():
+    return simulator.get_map()
+
+@app.post("/reset")
+def reset():
+    return simulator.reset()

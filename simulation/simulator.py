@@ -61,3 +61,8 @@ class Simulator:
         x, y = self._position
         rows[y][x] = "R"
         return "\n".join("".join(row) for row in rows)
+    def reset(self):
+        self._position = self._map.start
+        self._destination = None
+        self._path.clear()
+        return self.get_state()
