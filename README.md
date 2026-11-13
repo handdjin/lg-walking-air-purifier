@@ -207,9 +207,13 @@ The following features have been implemented and tested.
 
 ### 10.1 Navigate to the Project Directory
 
+Open a terminal and navigate to your local project directory.
+
 ```bash
-cd ~/Desktop/lg-purifier/lg-walking-air-purifier
+cd lg-walking-air-purifier
 ```
+
+Make sure you are in the project root directory before running Git commands.
 
 ### 10.2 Check Modified Files
 
