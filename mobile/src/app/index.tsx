@@ -13,7 +13,7 @@ import {
 const SERVER_URL =
   Platform.OS === 'web'
     ? 'http://127.0.0.1:8000'
-    : 'http://192.168.0.3:8000';
+    : 'http://172.16.162.187:8000';
 
 type HouseMap = {
   width: number;
@@ -48,6 +48,14 @@ const tileColors: Record<string, string> = {
   '.': '#F1F5F9',
   'X': '#F59E0B',
   'D': '#86EFAC',
+};
+const sampleAirQuality: Record<
+  string,
+  { measured: number; predicted: number }
+> = {
+  living_room: { measured: 12, predicted: 15 },
+  kitchen: { measured: 28, predicted: 42 },
+  bedroom: { measured: 9, predicted: 11 },
 };
 
 export default function HomeScreen() {
@@ -183,6 +191,26 @@ const steppingRef = useRef(false);
   useEffect(() => {
     loadData();
   }, []);
+  useEffect(() => {
+  const timer = setInterval(async () => {
+    try {
+      const response = await fetch(`${SERVER_URL}/status`);
+
+      if (!response.ok) return;
+
+      const data: SimulatorState = await response.json();
+
+      // 앱에서 자동 이동 중이 아닐 때 서버 위치 동기화
+      if (!isPlaying && !steppingRef.current) {
+        setSimState(data);
+      }
+    } catch (e) {
+      // 일시적인 조회 실패 시 기존 위치 유지
+    }
+  }, 1000);
+
+  return () => clearInterval(timer);
+}, [isPlaying]);
 
   // 화면 너비에 맞춰 지도 크기 조정
   const cellSize = houseMap
@@ -265,6 +293,38 @@ const steppingRef = useRef(false);
               남은 이동 칸: {simState.remaining_steps}
             </Text>
           </View>
+          
+<Text style={styles.sectionTitle}>방별 공기질</Text>
+
+<Text style={styles.sampleNotice}>
+  ※ 현재 표시된 수치는 UI 테스트용 예시 데이터입니다.
+</Text>
+
+{Object.entries(sampleAirQuality).map(([roomId, air]) => (
+  <View key={roomId} style={styles.airCard}>
+    <Text style={styles.airRoomName}>
+      {roomNames[roomId]}
+    </Text>
+
+    <View style={styles.airValues}>
+      <View style={styles.airValueBox}>
+        <Text style={styles.airLabel}>마지막 측정 PM2.5</Text>
+        <Text style={styles.airNumber}>
+          {air.measured}
+          <Text style={styles.airUnit}> µg/m³</Text>
+        </Text>
+      </View>
+
+      <View style={styles.airValueBox}>
+        <Text style={styles.airLabel}>30분 후 AI 예측 PM2.5</Text>
+        <Text style={styles.airNumber}>
+          {air.predicted}
+          <Text style={styles.airUnit}> µg/m³</Text>
+        </Text>
+      </View>
+    </View>
+  </View>
+))}
 
           <Text style={styles.sectionTitle}>이동 제어</Text>
 
@@ -448,4 +508,44 @@ const styles = StyleSheet.create({
   retryText: {
     color: '#FFFFFF',
   },
+  sampleNotice: {
+  fontSize: 12,
+  color: '#D97706',
+  textAlign: 'center',
+},
+airCard: {
+  width: '100%',
+  padding: 16,
+  backgroundColor: '#F8FAFC',
+  borderWidth: 1,
+  borderColor: '#E2E8F0',
+  borderRadius: 12,
+  gap: 12,
+},
+airRoomName: {
+  fontSize: 17,
+  fontWeight: 'bold',
+},
+airValues: {
+  flexDirection: 'row',
+  gap: 12,
+},
+airValueBox: {
+  flex: 1,
+  gap: 6,
+},
+airLabel: {
+  fontSize: 12,
+  color: '#64748B',
+},
+airNumber: {
+  fontSize: 22,
+  fontWeight: 'bold',
+  color: '#0F172A',
+},
+airUnit: {
+  fontSize: 11,
+  fontWeight: 'normal',
+  color: '#64748B',
+},
 });
