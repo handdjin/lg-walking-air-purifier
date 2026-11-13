@@ -76,7 +76,6 @@ Project reports, requirements, specifications, and related documentation will be
 
 Document revisions and development progress will be tracked through Git commit history.
 
-HEAD
 ## 8. How to Run
 
 ### 8.1 Start the FastAPI Backend
