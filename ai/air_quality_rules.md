@@ -1,182 +1,288 @@
-[공기질 생성 및 AI 데이터 기준]
+# Air Quality Simulation and AI Dataset Specification
 
-① 공기질 변화 규칙
-방 코드는 living_room(거실), kitchen(주방), bedroom(침실)이며, 농도 단위는 µg/m³다.
-공기질은 1분마다 계산하고, 10분마다 기록한다. 10분 동안의 변화는 아래 계산을 매분 반복한 결과다.
+This document defines the shared rules for Part A (Data and AI) and Part B (Air Quality Simulation).
 
-상황	    | 1분 동안 적용하는 규칙
---------------------------------------------------
-주방     | 요리	농도에 3 추가
-거실     | 청소	농도에 2 추가
-침실     | 침구 정리	농도에 2 추가
-자연 감소	| 10을 초과한 농도 부분의 1% 감소
-정화	    | 청정기가 있는 방의 농도를 추가로 5% 감소, 최저 5
+Sections 1–7 correspond directly to the seven planning checklist items. Section 7 contains implementation proposals that require confirmation by A and B.
 
-계산 순서: 오염 증가 → 자연 감소 → 정화
-C: 이전 농도
-E: 이번 1분의 오염 증가량
+## 1. Air Quality Update Rules
 
-오염 반영: C1 = C + E
-자연 감소: C2 = C1 - max(C1 - 10, 0) × 0.01
-정화 중: 다음 농도 = max(5, C2 × 0.95)
-정화 아님: 다음 농도 = C2
-농도가 10 이하이면 자연 감소는 없으며, 다시 10으로 올리지 않는다.
+**Checklist item — A+B:** Define how PM2.5 changes in the three rooms.
 
-오염 활동은 다음 시간표를 따른다:
-방	  | 활동	        | 시작 시각 범위	  | 지속 시간
----------------------------------------------
-주방	| 아침 요리 1회	| 07:00~09:00	  | 10~20분
-주방	| 저녁 요리 1회	| 18:00~20:00	  | 10~20분
-거실 | 청소     1회	| 13:00~17:00	  | 5~10분
-침실	| 침구 정리 1회	| 07:00~10:00	  | 5~10분
+### Common settings
 
-- 시작 시각과 지속 시간은 범위 안에서 분 단위로 무작위 선택한다.
-- 활동은 시작 시각부터 종료 시각 직전까지 적용한다.
-- 모든 요일에 같은 규칙을 적용한다.
-- 첫 버전에서는 방 사이 확산, 환기, 외부 공기 유입을 생략한다.
-정화는 측정값이 35 이상이면 켜고, 정화 중 새 측정값이 15 이하이면 끈다. 그 사이에서는 기존 상태를 유지한다. 방을 떠나면 해당 방의 정화 효과는 끝나며, 이동 중에는 정화하지 않는다.
-이 수치들은 프로젝트용 가정이다.
+| Item | Specification |
+| --- | --- |
+| Rooms | `living_room`, `kitchen`, `bedroom` |
+| Concentration unit | µg/m³ |
+| Time unit | Virtual minutes |
+| Environment update interval | 1 minute |
+| Ground-truth recording interval | 10 minutes |
+| AI sample interval | 10 minutes, after the initial patrol and subject to label availability |
+| Daily initialization | Start in the living room at 00:00; initialize all room concentrations to 10 and clear observation state |
 
+### Pollution events
 
+| Room | Daily event | Start-time range | Duration | Increase per active minute |
+| --- | --- | --- | --- | --- |
+| Kitchen | Breakfast cooking, once | 07:00–09:00 | 10–20 minutes | 3 |
+| Kitchen | Dinner cooking, once | 18:00–20:00 | 10–20 minutes | 3 |
+| Living room | Cleaning, once | 13:00–17:00 | 5–10 minutes | 2 |
+| Bedroom | Bedding arrangement, once | 07:00–10:00 | 5–10 minutes | 2 |
 
-② 예측 기준 시점과 정답 시점
-한 행은 ‘특정 시각에 특정 방의 30분 뒤 농도를 예측하는 사례 하나’임.
+- Randomly select each start time and duration within its range at minute resolution.
+- Events are active from the start time up to, but not including, the end time.
+- Apply the same scheduling rules on all weekdays.
+- Exclude inter-room pollution transfer, ventilation, and outdoor air inflow in the first version.
 
-항목	          | 정의	                        | 예시
------------------------------------------------------------------
-예측 기준 시각	  | 예측하는 현재 시각	              | 18:30
-마지막 측정 시각	| 해당 방을 가장 최근에 측정한 시각	  | 18:10
-측정 후 경과시간	| 예측 기준 시각 − 마지막 측정 시각	| 20분
-정답 시각	      | 예측 기준 시각 + 30분	          | 19:00
-정답 농도	      | 정답 시각의 해당 방 실제 값	      | 시뮬레이터의 19:00 값
+### Concentration update
 
-- 정답 시각은 마지막 측정 시각이 아닌 예측 기준 시각에서 계산한다.
-- 같은 기준 시각에 방별로 최대 세 행을 생성한다. 같은 시각에 측정이 있으면 이를 반영한 뒤 입력을 만든다. (청정기가 세 방을 동시에 측정하는 것이 아닌 각 방의 마지막 측정 기록을 이용하는 것임)
-- 현재 정답에는 기존 순찰과 측정 기반 정화의 결과가 반영된다. AI 예측으로 순찰 계획을 바꾸는 추가 개입은 없는 조건이다.
+Apply the following order every minute:
 
+**Pollution increase → natural decay → purification**
 
+```text
+C = previous concentration
+E = pollution increase during the current minute
 
-③ AI 모델 입력 후보
+C1 = C + E
+C2 = C1 - max(C1 - 10, 0) * 0.01
 
-입력 열	                      | 의미
----------------------------------------------------------
-room_id	                    | 예측 대상 방
-hour	                      | 예측 기준 시각의 시
-minute	                    | 예측 기준 시각의 분
-last_measured_pm25	        | 해당 방의 마지막 측정 농도
-minutes_since_measurement	  | 마지막 측정 후 경과 분
+If purification is active:
+    next_concentration = max(5, C2 * 0.95)
+Otherwise:
+    next_concentration = C2
+```
 
-- 요일별 오염 규칙 차이가 없으므로 첫 모델에서는 요일을 제외한다.
-- 미래 정답 열은 target_pm25_30min으로 구분하며, 입력에 넣지 않는다.
-- 금지하는 입력: 방문하지 않아 알 수 없는 현재 실제 농도, 미래 측정값, 미래 실제 농도, 미래 오염 활동의 확정 시간표(ex. 12분 뒤 요리를 시작한다 / AI는 과거 자료에서 배운 시간대별 경향과 현재까지의 측정 기록으로 예측해야 함)
+Natural decay also applies during pollution events. Concentrations at or below 10 do not decrease through natural decay and are not raised back to 10.
 
+Calculate a 10-minute change by applying the one-minute update ten times with the appropriate conditions for each minute.
 
+### Purification control
 
-④ 실제 공기질 전체 기록과 공기청정기가 방문을 통해 얻은 측정 기록을 분리하기
-- 실제 공기질 기록과 공기청정기 측정 기록 분리하는 이유: 시뮬레이터만 아는 ‘정답 정보’와 청정기가 실제로 얻은 ‘측정 정보’를 구분하기 위함. 그래야 AI가 정답을 미리 보지 않고 예측하도록 만들 수 있음.
+- Turn purification on when the measured concentration is at least 35.
+- Turn it off when a new measurement during purification is at most 15.
+- Between 15 and 35, retain the existing on/off state.
+- Purification affects only the occupied room and stops affecting that room when the purifier leaves.
+- Do not purify during movement.
+- Do not delay scheduled visits because purification is active.
 
-1. 실제 공기질 기록(ground_truth.csv): 정답으로 사용하는 실제 값
-| 열 이름 | 의미 | 예시 |
---------------------------------------------------------------------
-| run_id | 어느 시뮬레이션 실행에서 나온 기록인지 구분하는 번호 | run_001 |
-| scenario_day | 가상 60일 중 몇 번째 날인지 | 8 |
-| timestamp | 이 실제 농도가 계산된 가상 시각 | 18:30 |
-| room_id | 어느 방인지 | kitchen |
-| true_pm25 | 해당 시각·방의 실제 PM2.5 농도 | 40 |
+These values are experimental assumptions, not product specifications or health standards.
 
-2. 방문 측정 기록(observations.csv): 청정기가 직접 측정해서 얻은 기록, AI 입력 생성·정화 제어 목적
-| 열 이름 | 의미 | 예시 |
----------------------------------------------------
-| run_id | 어느 실행에서 나온 측정인지 | run_001 |
-| scenario_day | 가상 몇 일 차인지 | 8 |
-| measured_at | 청정기가 측정한 가상 시각 | 18:30 |
-| room_id | 측정한 방 | kitchen |
-| measured_pm25 | 그때 측정한 PM2.5 농도 | 40 |
+## 2. Prediction Time and Target Time
 
-측정 규칙은 다음과 같다:
-- 도착하면 즉시 해당 방을 측정한다.
-- 계속 머무르면 마지막 측정으로부터 10분마다 재측정한다.
-- 같은 시각·같은 방의 중복 측정은 한 번만 기록한다.
-- 다른 방은 마지막 측정값과 측정 시각만 유지한다.
-별도의 센서 오차가 없는 첫 버전에서는 같은 시각·같은 방의 실제 값과 측정값은 같다.
+**Checklist item — A:** Define the prediction reference time and the time of the ground-truth label.
 
+One dataset row represents one prediction for one room, 30 minutes ahead.
 
+| Field | Definition | Example |
+| --- | --- | --- |
+| Prediction reference time | Current time when the prediction is made | 18:30 |
+| Last measurement time | Most recent measurement time for the target room, available by the reference time | 18:10 |
+| Measurement age | Reference time minus last measurement time | 20 minutes |
+| Target time | Reference time plus 30 minutes | 19:00 |
+| Target concentration | Simulator ground truth for the target room at the target time | Room concentration at 19:00 |
 
-⑤ 첫 측정이 없는 경우 처리
-1. CSV 파일에서 미측정 방의 마지막 측정값과 시각은 비워 둔다. 0으로 채우지 않는다. 읽을 때 결측으로 처리.
-  
-2. 매일 세 방의 첫 순찰을 완료한 뒤부터 10분 기록 시점에 AI 자료를 생성한다.
-| 시각 | 측정 기록 저장 | AI 자료 생성 |
--------------------------------------------------------------
-| 00:00 | 거실 측정 기록 저장 | 아직 생성하지 않음: 주방·침실 미측정 |
-| 00:10 | 주방 측정 기록 저장 | 아직 생성하지 않음: 침실 미측정 |
-| 00:20 | 침실 측정 기록 저장 | 세 방 측정 완료 → 방별 AI 자료 생성 |
+- Calculate the target time from the reference time, not the last measurement time.
+- Create one row per room at each eligible reference time, giving three rows when all rooms are eligible.
+- Use each room's latest available observation; the rooms are not measured simultaneously.
+- If a measurement occurs at the reference time, update the observation before constructing the input.
+- The label includes the effects of the predefined patrol and measurement-based purification policy. No additional AI-driven proactive rerouting is applied during this reference scenario.
+- Exclude rows whose target time falls on the following day because each day is initialized independently.
 
-<00:20에 만드는 AI 입력 자료>
-| 대상 방 | 마지막 측정 시각 | 측정 후 경과시간 |
------------------------------------------
-| 거실 | 00:00 | 20분 |
-| 주방 | 00:10 | 10분 |
-| 침실 | 00:20 | 0분 |
+## 3. Model Input Features and Label
 
-3. 이 조건은 학습·검증·시험 자료 모두에 적용한다.
-  
-4. 매일 00:00에 거실에서 시작하고, 세 방의 농도는 10, 측정 상태는 미측정으로 초기화한다.
-(00:00 초기화 직후)
-시뮬레이터의 실제 농도: 거실 10 / 주방 10 / 침실 10
-청정기의 측정 기록: 거실 없음 / 주방 없음 / 침실 없음
+**Checklist item — A:** Define candidate model inputs.
 
-(00:00 거실 측정 후)
-청정기가 얻은 정보: 거실은 00:00에 10 / 주방·침실은 아직 미측정
+| Input feature | Meaning |
+| --- | --- |
+| `room_id` | Target room |
+| `hour` | Hour of the prediction reference time |
+| `minute` | Minute of the prediction reference time |
+| `last_measured_pm25` | Latest observed PM2.5 for the target room |
+| `minutes_since_measurement` | Minutes since that observation |
 
+Exclude weekday from the first model because the pollution rules do not vary by weekday.
 
+Store the label separately as:
 
-⑥ 학습·검증·시험 날짜 및 시나리오 분리
-순찰은 거실 → 주방 → 침실 순서로 반복한다. 날짜별로 기본 → 느린 → 불규칙 순찰을 반복 적용한다.
+| Label | Meaning |
+| --- | --- |
+| `target_pm25_30min` | Ground-truth PM2.5 for the target room 30 minutes after the reference time |
 
-순찰 방식	| 다음 방 도착까지의 간격
--------------------------------------
-기본	    | 10분
-느린	    | 20분
-불규칙	  | 매번 10·20·30분 중 무작위 선택
+Execution IDs, day numbers, reference times, and target times may be stored as metadata. Keep them separate from the selected model inputs; derive `hour` and `minute` from the reference time.
 
-이 간격은 실제 이동 시간만을 뜻하지 않는다. 초기 생성기에서는 도착 시각에 방이 바뀌는 방식으로 단순화하고, 정화 때문에 방문 일정을 늦추지 않는다.
+### Prohibited inputs
 
-용도	                  | 날짜	    | 기본·느린·불규칙 순찰 일수
---------------------------------------------------------
-학습: 예측 관계 학습	      | 1~42일	  |   각각 14일
-검증: 모델 설정 선택	      | 43~51일	|   각각 3일
-최종 시험: 최종 성능 확인	  | 52~60일	|   각각 3일
+Do not provide the model with:
 
+- Unobserved current ground-truth concentrations.
+- Measurements obtained after the reference time.
+- Future ground-truth concentrations, including the label.
+- The exact future pollution-event schedule.
+- Future random visit decisions unavailable at prediction time.
 
-- 먼저 가상 60일 자료를 만들고, 그 자료를 위 기준으로 나눈다.
-- 세 순찰 방식의 학습 자료를 합쳐 하나의 모델을 학습한다.
-- 행을 무작위로 나누지 않고, 같은 날짜는 같은 용도로 사용한다.
-- 다음 날로 넘어가는 미래 정답은 제외한다. 예: 23:30 입력 → 다음 날 00:00 정답은 제외.
-- 최종 시험 자료는 학습이나 모델 설정 선택에 사용하지 않는다.
-- 일부 최종 시험일에는 저녁 요리 시간 등을 평소와 다르게 설정해, 생활 패턴 변화에 대한 예측 성능을 확인한다. 변경할 날짜와 규칙은 모델 학습 결과를 확인하기 전에 정해 기록한다.
+The simulator's knowledge must not be treated as information available to the purifier.
 
+## 4. Separate Ground Truth and Observation Records
 
+**Checklist item — A+B:** Store complete ground truth separately from measurements obtained by the purifier.
 
-⑦ 동일한 공기질 변화 함수·규칙을 데이터 생성기와 시뮬레이터가 공유하도록 인터페이스 결정 (인터페이스: 함수에 어떤 정보를 주고 어떤 결과를 받을지 정하는 약속)
-<구현 제안>
+This separation prevents hidden simulator information from entering the model inputs.
+
+### Ground truth: `ground_truth.csv`
+
+| Column | Meaning | Example |
+| --- | --- | --- |
+| `run_id` | Simulation execution identifier | `run_001` |
+| `scenario_day` | Virtual day number within the 60-day dataset | `8` |
+| `timestamp` | Virtual time of the ground-truth state | `18:30` |
+| `room_id` | Room identifier | `kitchen` |
+| `true_pm25` | Ground-truth concentration | `40` |
+
+Use this record to construct labels and evaluate results.
+
+### Observations: `observations.csv`
+
+| Column | Meaning | Example |
+| --- | --- | --- |
+| `run_id` | Simulation execution identifier | `run_001` |
+| `scenario_day` | Virtual day number | `8` |
+| `measured_at` | Virtual measurement time | `18:30` |
+| `room_id` | Measured room | `kitchen` |
+| `measured_pm25` | Observed concentration | `40` |
+
+Use this record to construct model inputs and control measurement-based purification.
+
+### Measurement rules
+
+- Measure immediately on arrival.
+- While remaining in the same room, measure again every 10 minutes after the last measurement.
+- Record only one measurement for the same room and time if arrival and periodic measurement triggers overlap.
+- For other rooms, retain the last measurement and its time without refreshing them from hidden ground truth.
+
+The first version adds no sensor error. Therefore, a measurement equals the ground-truth concentration for that room at that instant. However, observation records contain only actual measurements, not all room states.
+
+The proposed filenames and column names should be confirmed by A and B before implementation.
+
+## 5. Rooms Without an Initial Measurement
+
+**Checklist item — A:** Define how to handle missing measurement history.
+
+- Keep an unmeasured room's latest value and measurement time missing.
+- Represent missing values as empty CSV fields and interpret them as missing when loading the file.
+- Do not replace missing values with zero.
+- Begin constructing AI samples only after all three rooms have been measured at least once that day.
+- Apply this rule to training, validation, and test data.
+
+Measurements are recorded from the start of the patrol. Only AI sample construction waits for completion of the initial patrol.
+
+### Basic-patrol example
+
+| Time | Observation recorded | AI sample construction |
+| --- | --- | --- |
+| 00:00 | Living room | Not yet: kitchen and bedroom remain unmeasured |
+| 00:10 | Kitchen | Not yet: bedroom remains unmeasured |
+| 00:20 | Bedroom | Begin constructing room-level samples |
+
+At 00:20, measurement ages are 20 minutes for the living room, 10 for the kitchen, and 0 for the bedroom. All three targets refer to 00:50.
+
+At the start of each day, initialize ground-truth concentrations to 10 and clear observation state. Then perform the immediate living-room measurement at 00:00. Initializing a room's concentration does not count as measuring it.
+
+## 6. Training, Validation, and Test Split
+
+**Checklist item — A:** Split data by date or scenario.
+
+Generate 60 virtual days, then assign records to the following subsets.
+
+### Patrol schedule
+
+Repeat the room order:
+
+**Living room → kitchen → bedroom**
+
+Repeat daily patterns:
+
+**Day 1: basic → Day 2: slow → Day 3: irregular → repeat**
+
+| Pattern | Interval until arrival at the next room | Total days |
+| --- | --- | --- |
+| Basic | 10 minutes | 20 |
+| Slow | 20 minutes | 20 |
+| Irregular | Randomly select 10, 20, or 30 minutes for each interval | 20 |
+
+These intervals are not travel time alone. The initial generator simplifies movement as a room change at the arrival time.
+
+### Data allocation
+
+| Subset | Virtual days | Days per patrol pattern | Purpose |
+| --- | --- | --- | --- |
+| Training | 1–42 | 14 each | Learn input–label relationships |
+| Validation | 43–51 | 3 each | Select model settings |
+| Final test | 52–60 | 3 each | Evaluate the selected model |
+
+- Train one model using training samples from all three patrol patterns.
+- Keep all records from one day in the same subset; do not randomly split rows.
+- Exclude samples before the initial patrol is complete or whose targets cross the daily boundary.
+- Do not use final-test data for training or model selection.
+- On selected test days, change an activity pattern to evaluate robustness, such as moving dinner cooking to 20:00–22:00.
+- Record the selected dates and changes before inspecting model training results.
+
+The planned ground-truth table contains:
+
+**60 days × 144 recording times per day × 3 rooms = 25,920 rows.**
+
+This is neither the number of sensor observations nor the final number of AI samples.
+
+## 7. Shared Air Quality Interface
+
+**Checklist item — A+B:** Make the generator and simulator share the same update function and rules.
+
+### Proposed interface
+
+```python
 step_pm25(current_pm25, event_increase, purifying)
-- 입력 1:	계산 전 농도
-- 입력 2:	이번 1분의 오염 증가량
-- 입력 3:	해당 방에서 정화 중인지 여부
-- 출력	 :  ①의 수식으로 계산한 1분 뒤 농도
+```
 
-- 함수는 한 곳에 작성하고 A의 생성기와 B의 시뮬레이터가 함께 사용한다.
-- 10분 변화는 분별 조건을 반영해 함수를 10회 적용한다.
-- 오염 일정, 측정·정화 판단, 초기화 규칙도 동일하게 적용한다.
-- 오염 활동용·불규칙 방문용 난수 시드를 분리하고, 규칙·시드·시나리오 버전을 저장한다. 시드는 무작위 선택을 재현하는 번호다. ?
-- 실제 이동 기능을 연결하면 이동 중 정화를 제외하고 실제 도착 시각에 측정한다. 필요하면 자료를 다시 생성한다.
-확정할 사항: 공통 함수의 파일 위치·이름과 시각 처리 순서.
+| Parameter or output | Meaning |
+| --- | --- |
+| `current_pm25` | Concentration before the update |
+| `event_increase` | Pollution increase for the current minute |
+| `purifying` | Whether purification is active in that room for the current minute |
+| Return value | Concentration one minute later, calculated using Section 1 |
 
-시각 처리 순서는 현재 위치 반영 → 측정 → 정화 판단 → 기록·입력 생성 → 다음 1분 농도 계산을 제안한다. A/B가 같은 순서를 사용해야 한다.
-이해를 위한 짧은 보충 설명
-- 실제 값: 가상 세계의 정답. 측정값: 청정기가 확인한 정보. 예측값: AI가 추정한 미래 값.
-- 순찰은 자료 생성 과정, 학습은 입력과 정답의 관계를 배우는 과정이다.
-- ‘순찰별 20일’과 ‘학습 42일·검증 9일·시험 9일’은 같은 60일을 다른 기준으로 분류한 것이다.
-- AI의 선제 정화로 미래가 바뀌면 원래 예측보다 농도가 낮아질 수 있다. 이후 정화 효과 비교는 별도 평가로 다룬다.
-문서를 작성했다고 바로 모든 항목을 완료 처리하기보다는, A/B가 입력·정답·기록 열을 같은 뜻으로 이해하고 ⑦의 인터페이스까지 확인한 뒤 체크하면 됩니다. 이번 체크리스트는 규칙과 약속의 합의가 목적이므로 전체 코드 구현까지 끝나야 하는 것은 아닙니다.
+- Implement the function once and reuse it in both components.
+- Apply it ten times to calculate a 10-minute change.
+- Share event-generation, sensing, purification-control, and initialization rules.
+- Use separate random seeds for pollution events and irregular visits. A seed makes random selections reproducible.
+- Record the rules, seeds, and scenario version.
+- When actual movement is integrated, measure at actual arrival times and exclude purification during travel. Regenerate data if necessary.
+
+### Proposed processing order
+
+```text
+Apply location changes at time t
+→ Measure if required
+→ Update purification state
+→ Record state and construct inputs
+→ Calculate the next one-minute concentration
+```
+
+A and B must confirm the function location, name, and processing order before implementation.
+
+## Completion Checklist
+
+- [ ] A and B agree on the pollution, decay, and purification rules.
+- [ ] Reference and target times are defined consistently.
+- [ ] Input features, labels, and metadata are distinguished.
+- [ ] Ground-truth and observation schemas are agreed.
+- [ ] Initial missing measurements are handled consistently.
+- [ ] Date splits and test-pattern changes are documented.
+- [ ] The shared function and processing order are confirmed.
+
+## Quick Reference
+
+- **Ground truth:** The simulated environment's actual state.
+- **Observation:** Information obtained by the purifier through measurement.
+- **Prediction:** The model's estimate of a future concentration.
+- Patrol simulation generates data; model training learns from that data.
+- AI-driven purification can change future concentrations. Evaluate its purification benefits separately from reference-scenario prediction error.
