@@ -5,8 +5,6 @@ This document defines the shared rules for Data and AI part and Air Quality Simu
 
 ## 1. Air Quality Update Rules
 
-**Checklist item — A+B:** Define how PM2.5 changes in the three rooms.
-
 ### Common settings
 
 | Item | Specification |
@@ -69,8 +67,6 @@ These values are experimental assumptions, not product specifications or health 
 
 ## 2. Prediction Time and Target Time
 
-**Checklist item — A:** Define the prediction reference time and the time of the ground-truth label.
-
 One dataset row represents one prediction for one room, 30 minutes ahead.
 
 | Field | Definition | Example |
@@ -89,8 +85,6 @@ One dataset row represents one prediction for one room, 30 minutes ahead.
 - Exclude rows whose target time falls on the following day because each day is initialized independently.
 
 ## 3. Model Input Features and Label
-
-**Checklist item — A:** Define candidate model inputs.
 
 | Input feature | Meaning |
 | --- | --- |
@@ -123,8 +117,6 @@ Do not provide the model with:
 The simulator's knowledge must not be treated as information available to the purifier.
 
 ## 4. Separate Ground Truth and Observation Records
-
-**Checklist item — A+B:** Store complete ground truth separately from measurements obtained by the purifier.
 
 This separation prevents hidden simulator information from entering the model inputs.
 
@@ -165,8 +157,6 @@ The proposed filenames and column names should be confirmed by A and B before im
 
 ## 5. Rooms Without an Initial Measurement
 
-**Checklist item — A:** Define how to handle missing measurement history.
-
 - Keep an unmeasured room's latest value and measurement time missing.
 - Represent missing values as empty CSV fields and interpret them as missing when loading the file.
 - Do not replace missing values with zero.
@@ -188,8 +178,6 @@ At 00:20, measurement ages are 20 minutes for the living room, 10 for the kitche
 At the start of each day, initialize ground-truth concentrations to 10 and clear observation state. Then perform the immediate living-room measurement at 00:00. Initializing a room's concentration does not count as measuring it.
 
 ## 6. Training, Validation, and Test Split
-
-**Checklist item — A:** Split data by date or scenario.
 
 Generate 60 virtual days, then assign records to the following subsets.
 
@@ -233,8 +221,6 @@ The planned ground-truth table contains:
 This is neither the number of sensor observations nor the final number of AI samples.
 
 ## 7. Shared Air Quality Interface
-
-**Checklist item — A+B:** Make the generator and simulator share the same update function and rules.
 
 ### Proposed interface
 
