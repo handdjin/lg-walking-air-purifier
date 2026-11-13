@@ -24,7 +24,7 @@ This project is developed as part of the Software Engineering course in the Depa
 | Database | SQLite |
 | Real-Time Communication | HTTP Polling (WebSocket planned) |
 | UI/UX Design | Figma |
-| Development Tools | VS Code, Claude Code |
+| Development Tools | VS Code, ChatGPT(Codex) |
 | Version Control | Git, GitHub |
 
 ## 3. Project Structure
