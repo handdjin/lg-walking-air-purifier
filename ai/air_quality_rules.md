@@ -1,8 +1,7 @@
 # Air Quality Simulation and AI Dataset Specification
 
-This document defines the shared rules for Part A (Data and AI) and Part B (Air Quality Simulation).
+This document defines the shared rules for Data and AI part and Air Quality Simulation part.
 
-Sections 1–7 correspond directly to the seven planning checklist items. Section 7 contains implementation proposals that require confirmation by A and B.
 
 ## 1. Air Quality Update Rules
 
