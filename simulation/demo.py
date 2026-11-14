@@ -11,7 +11,8 @@ def show(simulator):
     location = state["room_name"] or "문 통과 중"
     print(simulator.render_map())
     print(f"위치: {location} {state['position']} | 상태: {state['status']}"
-          f" | 남은 이동: {state['remaining_steps']}칸\n")
+          f" | 남은 이동: {state['remaining_steps']}칸"
+          f" | 가상 시간: {state['simulation_time_seconds']}초\n")
 
 
 def main():
@@ -22,6 +23,7 @@ def main():
     if not 0 <= args.delay <= 5:
         parser.error("--delay는 0~5초 사이여야 합니다.")
     simulator = Simulator()
+    simulator.start()
     print("# 벽 | X 장애물 | D 문 | . 바닥 | R 청정기")
     print("왼쪽: 거실 / 오른쪽 위: 주방 / 오른쪽 아래: 침실\n")
     show(simulator)
