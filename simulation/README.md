@@ -197,3 +197,78 @@ observation = env.sample_current_room("kitchen")
 | `bedroom` | 침실 | `[11, 8]` |
 
 문 `[7, 3]`, `[7, 8]`은 어느 방에도 속하지 않습니다. 지도 정의 변경은 새 시뮬레이터 생성 시 반영됩니다. 클라이언트는 `get_map()`으로 같은 지도를 표시할 수 있습니다.
+
+## 예측값 기반 목적지 선택 (초기 규칙)
+
+`controller.py`는 외부에서 받은 같은 현재 시점의 **30분 뒤 예측값**으로 목적지를 고릅니다. 모델 학습·추론 자체는 포함하지 않습니다. 실제 AI 및 앱 연결 전 단계이며, `controller_demo.py`의 숫자는 명시적인 테스트용 예시입니다.
+
+```sh
+python3 -m simulation.controller_demo
+```
+
+추가 파일:
+
+| 파일 | 역할 |
+|---|---|
+| `controller.py` | 방별 이동 시간 계산, 후보 점수화, 목적지 선택 및 기존 이동 함수 연결 |
+| `controller_demo.py` | 예시 예측값으로 주방·침실 이동, 현재 방 유지, 전체 저위험 대기 시연 |
+| `tests/test_controller.py` | 선택 규칙, 도달 불가, 잘못된 입력, 이동 연결 및 상태 보존 검사 |
+
+### 초기 선택 규칙
+
+1. 지도상 현재 위치부터 각 방 도착점까지 A* 경로를 구합니다. 현재 방은 그 자리에서 머무르므로 이동 시간 0입니다.
+2. 이동 초 = 이동 칸 수 × 시뮬레이터의 `tick_seconds` (기본 10초).
+3. 도달 가능하고 예측 PM이 `threshold` 이상인 방을 후보로 삼습니다. 기본 기준은 35입니다.
+4. 점수 = 예측 PM − 이동 시간(분) × `travel_weight`. 기본 가중치는 1이며 분당 1 PM만큼 점수에서 뺍니다.
+5. 최고 점수를 선택합니다. 동점이면 이동 시간이 짧은 방, 그래도 동점이면 방 코드 사전순입니다.
+
+기준 35와 가중치 1은 검증 전 초기 설정입니다. 최적 정책이나 AI 성능을 보장하지 않습니다. 후보 기준은 **예측 PM**에 적용하며, 점수가 음수여도 후보 중 최고이면 선택합니다.
+
+### 호출 예제
+
+```python
+from simulation import Simulator
+from simulation.controller import choose_destination, decide_and_move
+
+sim = Simulator(seed=42)
+# 실제 모델이 아닌 연결 검증용 예시. 나중에 예측 함수 반환값을 이 형식으로 변환합니다.
+predictions = {"living_room": 20.0, "kitchen": 60.0, "bedroom": 40.0}
+
+preview = choose_destination(sim, predictions)  # 조회만 하며 상태를 변경하지 않음
+result = decide_and_move(sim, predictions)      # 다른 방 선택 시 move_to() 호출
+print(result["decision"]["target_room"])       # kitchen
+
+sim.start()
+while sim.get_state()["remaining_steps"]:
+    sim.step()
+```
+
+`decide_and_move()`는 경로만 예약하고 시간을 진행하거나 자동 시작하지 않습니다. 이미 실행 중이면 실행 상태를 유지하고, 일시정지 중이면 사용자가 시작해야 이동합니다. 서버에서는 기존 단일 진행 루프를 계속 사용합니다.
+
+### 반환값과 예외
+
+`choose_destination()`은 다음 필드를 가진 결정 사본을 반환합니다.
+
+- `action`: 다른 방 이동 예약 `move`, 현재 방 유지 `stay`, 새 목적지 없음 `wait`.
+- `target_room`: 선택한 방 코드 또는 `null`.
+- `reason`: `highest_score`, `current_room_selected`, `all_predictions_below_threshold`, `no_reachable_candidate`.
+- `decided_at_seconds`: 판단한 가상 시각.
+- `prediction_horizon_minutes`: 30.
+- `threshold`, `travel_weight`: 적용한 설정.
+- `rooms`: 방별 예측 PM, 도달 가능 여부, 이동 칸 수·초, 점수, 후보 여부. 도달 불가 방은 이동 비용과 점수가 `null`입니다.
+
+`decide_and_move()`는 `{decision: 결정 결과, state: 시뮬레이터 상태}`를 반환합니다. 이 결정 결과는 기존 `get_state()`에 자동 저장되지 않습니다. 서버·앱 연동 때 반환 결과를 전달하고 초기화 시 서버가 보관한 결정도 비워야 합니다.
+
+`stay`와 `wait`는 **새로운 이동을 예약하지 않는다**는 의미입니다. 가상 시간을 멈추거나, 기존 정화를 강제로 끄거나, 이전 `destination` 표시를 지우지 않습니다. 선택된 새 목적지 표시는 `decision.target_room`을 사용합니다. 정화는 실제 측정값으로 판단하는 기존 시뮬레이터 규칙을 따릅니다. 높은 예측값만으로 정화를 켜지 않습니다.
+
+누락된 방, 알 수 없는 방, `None`, 음수·무한대·NaN·문자·불리언 예측은 `ValueError`로 거부하고 기존 시뮬레이터 상태를 보존합니다. 예측값은 세 방 모두 유한한 0 이상의 Python `int`/`float`여야 합니다. 모델 라이브러리의 반환값은 연결 코드에서 필요에 따라 `float`로 변환합니다.
+
+미측정 방에 대한 예측값이 없으면 숨겨진 실제 농도나 0으로 대체하지 않습니다. 초기 순찰 또는 A의 미측정 입력 처리 방침을 먼저 정해야 합니다. 이 모듈은 초기 순찰을 자동 실행하지 않습니다.
+
+### 이번 구현 범위와 후속 연결
+
+정지한 상태에서 한 번 판단하고 기존 이동 기능에 연결하는 단계입니다. 예약된 경로가 남아 있으면 일시정지 중이어도 새 판단을 거부합니다. 하루 종료 후에도 거부합니다. 잘못된 요청으로 경로가 덮어써지지 않습니다.
+
+A의 모델이 준비되면 최신 시각·측정 이력으로 예측한 결과를 위 입력 형식으로 변환해서 전달합니다. `age_seconds / 60`으로 측정 경과 분을 구하며 학습 시 사용한 단위와 맞춥니다. 미래 사건이나 미관측 실제 농도를 예측 입력으로 사용하지 않습니다. 예측값에는 자체 타임스탬프가 없으므로 호출자가 현재 상태에 맞는 최신 예측인지 보장해야 합니다.
+
+실제 모델 호출, 자동 재판단 주기, 이동 중 목적지 재계획, FastAPI 주소와 앱 표시는 후속 통합 작업입니다. 서버는 판단과 경로 예약을 다른 상태 변경과 동시에 실행하지 않도록 직렬 처리해야 합니다.
