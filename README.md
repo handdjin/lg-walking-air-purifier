@@ -54,13 +54,16 @@ This repository is used for source code management, version control, and team co
 - Project reports and documentation are maintained in the `docs/` directory.
 
 Detailed Git instructions are provided in Section 10.
+
 ## 5. Project Status
 
-Current Stage: Initial Prototype Development
+**Current Stage: Core Feature Integration**
 
-The initial mobile application, FastAPI backend, and room-based simulator have been implemented and successfully integrated.
+The mobile application, FastAPI backend, AI prediction model, and autonomous navigation system have been successfully integrated.
 
-The current prototype supports basic room status retrieval and movement commands. Advanced simulation, AI prediction, autonomous navigation, and real-time communication will be implemented in subsequent development stages.
+The current prototype supports automatic initial patrol, room-based air quality measurement, 30-minute PM2.5 prediction, AI-based destination selection, and server-controlled autonomous movement.
+
+The next development stages will focus on purification and replanning validation, activity history, UI/UX improvements, performance evaluation, and system testing.
 
 ## 6. Team Members
 
@@ -134,10 +137,13 @@ Replace `YOUR_LOCAL_IP` with the computer's current IP address.
 |---|---|---|
 | GET | `/` | Check whether FastAPI is running |
 | GET | `/map` | Retrieve the virtual home map |
-| GET | `/status` | Retrieve the purifier's current position and movement status |
-| POST | `/move` | Set a destination and calculate the movement path |
-| POST | `/step` | Move the purifier one step along the calculated path |
-| POST | `/reset` | Reset the purifier to its initial position |
+| GET | `/status` | Retrieve the current state, measured air quality, AI predictions, and destination decisions |
+| GET | `/predict` | Retrieve 30-minute PM2.5 predictions |
+| POST | `/move` | Manually set a destination and calculate the movement path |
+| POST | `/step` | Advance the simulation by one step for testing |
+| POST | `/start` | Start or resume the simulation |
+| POST | `/pause` | Pause the simulation |
+| POST | `/reset` | Reset the simulation and AI decision data |
 
 **Example movement request:**
 
@@ -153,52 +159,63 @@ Supported rooms:
 - `kitchen`
 - `bedroom`
 
-Note that `/move` calculates the path but does not automatically move the purifier. Movement is performed through `/step` requests.
-
+The backend automatically advances the simulation while it is running. The mobile application retrieves the latest state through HTTP polling without repeatedly calling `/step`.
 ---
 
 ## 9. Current Implementation
-
-The following features have been implemented and tested.
 
 ### 9.1 Virtual Home Simulation
 
 - 2D grid-based home environment with three rooms.
 - Defined walls, doors, obstacles, and walkable cells.
-- A* pathfinding for valid movement routes.
-- Step-by-step movement with coordinate updates.
-- Pathfinding tests for invalid coordinates, unreachable destinations, and identical starting and target positions.
+- A* pathfinding for autonomous navigation.
+- Time-based indoor air pollution simulation.
+- Automatic initial patrol and room-based air quality measurement.
+- Air purification logic based on measured PM2.5 levels.
+- Server-controlled simulation and movement.
 
-### 9.2 Mobile Application
+### 9.2 AI Prediction and Decision-Making
 
-- Interactive home map displaying the same grid and obstacles as the simulator.
-- Real-time visualization of the purifier's current position.
-- Manual destination selection for three rooms.
-- Start, pause, and reset controls.
-- Step-by-step movement visualization.
-- Display of current room, coordinates, movement status, and remaining steps.
-- Room-specific PM2.5 information cards.
-- Separate display of the last measured PM2.5 and the predicted PM2.5 for 30 minutes ahead.
-- Sample air quality data clearly labeled for UI testing.
+- Generation of 60 days of virtual indoor air quality data.
+- Random Forest model for 30-minute PM2.5 prediction.
+- Prediction based on time, room information, previous measurements, and measurement age.
+- Automatic prediction and destination evaluation every 10 simulation minutes when the purifier is not moving.
+- Destination selection based on predicted pollution levels and travel time.
+- Autonomous movement toward the selected destination.
 
-### 9.3 Backend Integration
+### 9.3 Mobile Application
 
-- FastAPI integration with the Python simulator.
-- Movement commands and state retrieval through REST APIs.
-- Automatic position synchronization using HTTP polling.
-- Periodic `/status` requests to reflect server-side position changes in the mobile application.
-- Error handling for server connection failures and invalid movement requests.
+- Interactive grid-based home map.
+- Automatic visualization of the purifier's current position.
+- Start, pause, and reset controls connected to the backend.
+- Display of the current room, coordinates, operating status, and remaining movement steps.
+- Display of the current simulation time.
+- Separate display of measured and AI-predicted PM2.5 values.
+- Display of AI-selected destinations and decision reasons.
+- Server connection error messages.
 
-### 9.4 Future Development
+### 9.4 Backend Integration
 
-- Integration of the machine learning model for 30-minute PM2.5 prediction.
-- Automatic destination selection based on predicted pollution levels and travel time.
-- Server-controlled autonomous movement.
-- Integration of actual prediction results into the mobile application.
-- Air purification simulation and performance evaluation.
-- End-to-end demonstration of proactive autonomous air purification.
+- FastAPI integration with the simulator, AI prediction model, and destination controller.
+- Automatic simulation progression through a server-side loop.
+- REST APIs for simulation control and state retrieval.
+- Storage of the latest AI prediction and destination decision in memory.
+- Automatic state synchronization through HTTP polling.
+- Error handling for invalid requests and simulation failures.
 
-**Current Limitation:** The mobile application currently uses sample PM2.5 values. AI-based destination selection and fully autonomous server-controlled movement are not yet integrated. WebSocket communication is not implemented; HTTP polling is currently used for position synchronization.
+### 9.5 Future Development
+
+- Validation of arrival, measurement, purification, and replanning.
+- Separate measurement status visualization.
+- Manual movement controls in the mobile application.
+- Movement, measurement, and purification event history.
+- UI/UX design improvements and screen navigation.
+- Mobile connection recovery and restart testing.
+- Performance comparison with a fixed patrol baseline.
+- KPI evaluation and system optimization.
+- Final integration testing, demonstration, and documentation.
+
+**Current Limitations:** Core AI prediction and autonomous movement have been integrated and verified. However, the complete purification and replanning cycle requires further validation. Activity history, manual movement controls in the mobile application, and detailed UI/UX design are not yet completed. HTTP polling is currently used instead of WebSocket communication.
 
 ---
 
