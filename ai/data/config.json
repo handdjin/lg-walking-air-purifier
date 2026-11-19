@@ -1,0 +1,33 @@
+{
+  "version": "1.0",
+  "run_id": "run_001",
+  "days": 60,
+  "event_seed_base": 100,
+  "visit_seed_base": 200,
+  "daily_seed_rule": "seed_base + scenario_day",
+  "shifted_test_days": [
+    55,
+    56,
+    57
+  ],
+  "movement": "instant room change at arrival",
+  "arrival_purification_state": "retain device state, then update from arrival measurement",
+  "features": [
+    "room_id",
+    "hour",
+    "minute",
+    "last_measured_pm25",
+    "minutes_since_measurement"
+  ],
+  "label": "target_pm25_30min",
+  "rules": {
+    "initial_pm25": 10,
+    "natural_decay": 0.01,
+    "purification_rate": 0.05,
+    "purification_minimum": 5,
+    "on_threshold": 35,
+    "off_threshold": 15,
+    "record_interval_minutes": 10,
+    "prediction_horizon_minutes": 30
+  }
+}

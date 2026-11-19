@@ -13,7 +13,7 @@ import {
 const SERVER_URL =
   Platform.OS === 'web'
     ? 'http://127.0.0.1:8000'
-    : 'http://172.16.162.187:8000';
+    : 'http://192.168.0.3:8000';
 
 type HouseMap = {
   width: number;
@@ -35,6 +35,13 @@ type SimulatorState = {
   destination: string | null;
   status: string;
   remaining_steps: number;
+  simulation_time_seconds: number;
+  is_running: boolean;
+  is_purifying: boolean;
+  finished: boolean;
+  observations: Record<string, { pm25: number | null; age_seconds: number | null }>;
+  ai_prediction: { reference_minute: number; target_minute: number; status: string; predictions: Record<string, number | null> } | null;
+  ai_decision: { action: string; target_room: string | null; reason: string } | null;
 };
 
 const roomNames: Record<string, string> = {
@@ -49,14 +56,13 @@ const tileColors: Record<string, string> = {
   'X': '#F59E0B',
   'D': '#86EFAC',
 };
-const sampleAirQuality: Record<
-  string,
-  { measured: number; predicted: number }
-> = {
-  living_room: { measured: 12, predicted: 15 },
-  kitchen: { measured: 28, predicted: 42 },
-  bedroom: { measured: 9, predicted: 11 },
+const decisionReasons: Record<string, string> = {
+  all_predictions_below_threshold: '모든 방의 예측값이 기준 미만',
+  no_reachable_candidate: '이동 가능한 후보 없음',
+  current_room_selected: '현재 방 유지',
+  highest_score: '예측 오염도와 이동 시간을 고려한 최적 방',
 };
+const clock = (minute: number) => `${String(Math.floor(minute / 60)).padStart(2, '0')}:${String(minute % 60).padStart(2, '0')}`;
 
 export default function HomeScreen() {
   const { width } = useWindowDimensions();
@@ -65,152 +71,72 @@ export default function HomeScreen() {
   const [simState, setSimState] = useState<SimulatorState | null>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [isStepping, setIsStepping] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const requestRef = useRef(false);
 
-const steppingRef = useRef(false);
+  const refresh = async (withMap = false) => {
+    const response = await fetch(`${SERVER_URL}/status`);
+    if (!response.ok) throw new Error('Status request failed');
+    const state: SimulatorState = await response.json();
+    if (withMap) {
+      const mapResponse = await fetch(`${SERVER_URL}/map`);
+      if (!mapResponse.ok) throw new Error('Map request failed');
+      setHouseMap(await mapResponse.json());
+    }
+    setSimState(state);
+  };
 
   const loadData = async () => {
+    if (requestRef.current) return;
+    requestRef.current = true;
+    setBusy(true);
     try {
-      const [mapResponse, statusResponse] = await Promise.all([
-        fetch(`${SERVER_URL}/map`),
-        fetch(`${SERVER_URL}/status`),
-      ]);
-
-      if (!mapResponse.ok || !statusResponse.ok) {
-        throw new Error('Server request failed');
-      }
-
-      const mapData = await mapResponse.json();
-      const statusData = await statusResponse.json();
-
-      setHouseMap(mapData);
-      setSimState(statusData);
+      await refresh(true);
       setError('');
-    } catch (e) {
+    } catch {
       setError('서버에 연결할 수 없습니다. Wi-Fi와 FastAPI를 확인해 주세요.');
     } finally {
+      requestRef.current = false;
+      setBusy(false);
       setLoading(false);
     }
   };
 
-  const moveToRoom = async (targetRoom: string) => {
+  const command = async (endpoint: string, body?: object) => {
+    if (requestRef.current) return;
+    requestRef.current = true;
+    setBusy(true);
     try {
-      const response = await fetch(`${SERVER_URL}/move`, {
+      const response = await fetch(`${SERVER_URL}/${endpoint}`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ target_room: targetRoom }),
+        ...(body ? { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : {}),
       });
-
-      if (!response.ok) {
-        throw new Error('Movement request failed');
-      }
-
-      const data = await response.json();
-      setIsPlaying(false);
-      setSimState(data);
+      if (!response.ok) throw new Error('Command failed');
+      await refresh();
       setError('');
-    } catch (e) {
-      setError('이동 명령을 전송하지 못했습니다.');
-    }
-  };
-
-  
-  // 공기청정기를 한 칸 이동
-  const stepOnce = async () => {
-    if (steppingRef.current) return;
-
-    steppingRef.current = true;
-    setIsStepping(true);
-
-    try {
-      const response = await fetch(`${SERVER_URL}/step`, {
-        method: 'POST',
-      });
-
-      if (!response.ok) {
-        throw new Error('Step request failed');
-      }
-
-      const data: SimulatorState = await response.json();
-      setSimState(data);
-      setError('');
-
-      // 목적지에 도착하면 자동 정지
-      if (data.remaining_steps === 0) {
-        setIsPlaying(false);
-      }
-    } catch (e) {
-      setIsPlaying(false);
-      setError('이동 중 서버 연결에 실패했습니다.');
+    } catch {
+      setError('명령 처리 또는 상태 조회에 실패했습니다.');
     } finally {
-      steppingRef.current = false;
-      setIsStepping(false);
+      requestRef.current = false;
+      setBusy(false);
     }
   };
 
-  const resetSimulation = async () => {
-  setIsPlaying(false);
-
-  // 진행 중인 이동 요청이 끝날 때까지 초기화 방지
-  if (steppingRef.current) return;
-
-  try {
-    const response = await fetch(`${SERVER_URL}/reset`, {
-      method: 'POST',
-    });
-
-    if (!response.ok) {
-      throw new Error('Reset request failed');
-    }
-
-    const data: SimulatorState = await response.json();
-    setSimState(data);
-    setError('');
-  } catch (e) {
-    setError('초기화에 실패했습니다.');
-  }
-};
-
-  // 자동 이동: 0.7초마다 한 칸씩 이동
   useEffect(() => {
-    if (!isPlaying || !simState || simState.remaining_steps === 0) {
-      return;
-    }
-
-    const timer = setInterval(() => {
-      void stepOnce();
-    }, 700);
-
-    return () => clearInterval(timer);
-  }, [isPlaying, simState]);
-
-  // 앱 실행 시 지도와 현재 상태 불러오기
-  useEffect(() => {
-    loadData();
-  }, []);
-  useEffect(() => {
-  const timer = setInterval(async () => {
-    try {
-      const response = await fetch(`${SERVER_URL}/status`);
-
-      if (!response.ok) return;
-
-      const data: SimulatorState = await response.json();
-
-      // 앱에서 자동 이동 중이 아닐 때 서버 위치 동기화
-      if (!isPlaying && !steppingRef.current) {
-        setSimState(data);
+    void loadData();
+    const timer = setInterval(async () => {
+      if (requestRef.current) return;
+      requestRef.current = true;
+      try {
+        await refresh();
+      } catch {
+        setError('상태 조회 실패: 마지막으로 받은 정보를 표시합니다.');
+      } finally {
+        requestRef.current = false;
       }
-    } catch (e) {
-      // 일시적인 조회 실패 시 기존 위치 유지
-    }
-  }, 1000);
-
-  return () => clearInterval(timer);
-}, [isPlaying]);
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   // 화면 너비에 맞춰 지도 크기 조정
   const cellSize = houseMap
@@ -287,101 +213,60 @@ const steppingRef = useRef(false);
               좌표: [{simState.position.join(', ')}]
             </Text>
             <Text style={styles.detail}>
-              상태: {simState.status === 'moving' ? '이동 경로 설정됨' : '대기'}
+              상태: {simState.finished ? '종료' : !simState.is_running ? '일시정지' : simState.status === 'moving' ? '이동 중' : simState.is_purifying ? '정화 중' : '대기 중'}
             </Text>
             <Text style={styles.detail}>
               남은 이동 칸: {simState.remaining_steps}
             </Text>
+            <Text style={styles.detail}>가상 시각: {clock(Math.floor(simState.simulation_time_seconds / 60))}</Text>
+            <Text style={styles.detail}>이동 경로 목적지: {simState.remaining_steps > 0 && simState.destination ? roomNames[simState.destination] : '없음'}</Text>
+            <Text style={styles.detail}>최근 AI 선정 목적지: {simState.ai_decision?.target_room ? roomNames[simState.ai_decision.target_room] : simState.ai_decision ? '없음 (대기)' : '판단 전'}</Text>
+            <Text style={styles.detail}>AI 판단 이유: {simState.ai_decision ? decisionReasons[simState.ai_decision.reason] ?? simState.ai_decision.reason : '측정 및 판단 대기'}</Text>
           </View>
           
 <Text style={styles.sectionTitle}>방별 공기질</Text>
 
 <Text style={styles.sampleNotice}>
-  ※ 현재 표시된 수치는 UI 테스트용 예시 데이터입니다.
+  {simState.ai_prediction?.status === 'ok'
+    ? `AI 예측 기준 ${clock(simState.ai_prediction.reference_minute)} → ${clock(simState.ai_prediction.target_minute)}`
+    : 'AI 예측 대기 또는 예측 불가'}
 </Text>
-
-{Object.entries(sampleAirQuality).map(([roomId, air]) => (
-  <View key={roomId} style={styles.airCard}>
-    <Text style={styles.airRoomName}>
-      {roomNames[roomId]}
-    </Text>
-
-    <View style={styles.airValues}>
-      <View style={styles.airValueBox}>
-        <Text style={styles.airLabel}>마지막 측정 PM2.5</Text>
-        <Text style={styles.airNumber}>
-          {air.measured}
-          <Text style={styles.airUnit}> µg/m³</Text>
-        </Text>
-      </View>
-
-      <View style={styles.airValueBox}>
-        <Text style={styles.airLabel}>30분 후 AI 예측 PM2.5</Text>
-        <Text style={styles.airNumber}>
-          {air.predicted}
-          <Text style={styles.airUnit}> µg/m³</Text>
-        </Text>
+{Object.entries(roomNames).map(([roomId, name]) => {
+  const measured = simState.observations?.[roomId]?.pm25;
+  const predicted = simState.ai_prediction?.status === 'ok' ? simState.ai_prediction.predictions[roomId] : null;
+  return (
+    <View key={roomId} style={styles.airCard}>
+      <Text style={styles.airRoomName}>{name}</Text>
+      <View style={styles.airValues}>
+        <View style={styles.airValueBox}>
+          <Text style={styles.airLabel}>마지막 측정 PM2.5</Text>
+          <Text style={styles.airNumber}>{measured == null ? '미측정' : measured.toFixed(1)}</Text>
+          {measured != null && <Text style={styles.airUnit}>µg/m³ · {Math.floor((simState.observations[roomId].age_seconds ?? 0) / 60)}분 전 측정</Text>}
+        </View>
+        <View style={styles.airValueBox}>
+          <Text style={styles.airLabel}>30분 후 AI 예측 PM2.5</Text>
+          <Text style={styles.airNumber}>{predicted == null ? '예측 대기' : predicted.toFixed(1)}</Text>
+          {predicted != null && <Text style={styles.airUnit}>µg/m³</Text>}
+        </View>
       </View>
     </View>
-  </View>
-))}
+  );
+})}
 
           <Text style={styles.sectionTitle}>이동 제어</Text>
 
 <View style={styles.buttonContainer}>
-  <Pressable
-    style={[
-      styles.moveButton,
-      isPlaying && styles.disabledButton,
-    ]}
-    disabled={
-      isPlaying ||
-      isStepping ||
-      simState.remaining_steps === 0
-    }
-    onPress={() => setIsPlaying(true)}
-  >
+  <Pressable style={[styles.moveButton, (busy || simState.is_running || simState.finished) && styles.disabledButton]} disabled={busy || simState.is_running || simState.finished} onPress={() => command('start')}>
     <Text style={styles.buttonText}>▶ 시작</Text>
   </Pressable>
-
-  <Pressable
-    style={[
-      styles.moveButton,
-      !isPlaying && styles.disabledButton,
-    ]}
-    disabled={!isPlaying}
-    onPress={() => setIsPlaying(false)}
-  >
+  <Pressable style={[styles.moveButton, (busy || !simState.is_running) && styles.disabledButton]} disabled={busy || !simState.is_running} onPress={() => command('pause')}>
     <Text style={styles.buttonText}>⏸ 일시정지</Text>
   </Pressable>
-  <Pressable
-  style={[
-    styles.moveButton,
-    isStepping && styles.disabledButton,
-  ]}
-  disabled={isStepping}
-  onPress={resetSimulation}
-  >
-  <Text style={styles.buttonText}>↺ 초기화</Text>
+  <Pressable style={[styles.moveButton, busy && styles.disabledButton]} disabled={busy} onPress={() => command('reset')}>
+    <Text style={styles.buttonText}>↺ 초기화</Text>
   </Pressable>
 </View>
-          <Text style={styles.sectionTitle}>수동 이동</Text>
-
-          <View style={styles.buttonContainer}>
-            {Object.entries(roomNames).map(([id, name]) => (
-              <Pressable
-                key={id}
-                style={styles.moveButton}
-                onPress={() => moveToRoom(id)}
-              >
-                <Text style={styles.buttonText}>{name} 이동</Text>
-              </Pressable>
-            ))}
-          </View>
-
-          <Text style={styles.note}>
-            이동할 방을 선택한 뒤 시작 버튼을 누르세요.
-          </Text>
+<Text style={styles.note}>시작하면 서버에서 초기 순찰 및 AI 자동 운전을 진행합니다.</Text>
         </>
       )}
     </ScrollView>
