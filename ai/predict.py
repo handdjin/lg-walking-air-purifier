@@ -1,4 +1,4 @@
-# 예측함수
+# Prediction function
 
 import json
 import math
@@ -32,9 +32,10 @@ class Predictor:
 
     def predict_rooms(self, now_minute, observations):
         """
-        같은 현재 시각에서 세 방의 30분 뒤 농도를 예측합니다.
+        Predict concentrations 30 minutes ahead for all three rooms
+        using the same reference time.
 
-        observations 예시:
+        Example observations:
         {
             "kitchen": {
                 "pm25": 31,
@@ -43,13 +44,15 @@ class Predictor:
         }
         """
         if type(now_minute) is not int or not 0 <= now_minute < 1440:
-            raise ValueError("현재 시각은 0~1439 사이의 정수여야 합니다.")
+            raise ValueError(
+                "The current time must be an integer between 0 and 1439."
+            )
 
         if not isinstance(observations, dict):
-            raise ValueError("측정 기록은 딕셔너리여야 합니다.")
+            raise ValueError("Observations must be a dictionary.")
 
         if set(observations) - set(ROOMS):
-            raise ValueError("알 수 없는 방 이름이 있습니다.")
+            raise ValueError("Unknown room names are present.")
 
         missing = False
         rows = []
@@ -62,7 +65,7 @@ class Predictor:
                 continue
 
             if not isinstance(reading, dict):
-                raise ValueError(f"{room}: 측정 기록 형식이 잘못되었습니다.")
+                raise ValueError(f"{room}: Invalid observation format.")
 
             value = reading.get("pm25")
             measured = reading.get("measured_minute")
@@ -84,7 +87,9 @@ class Predictor:
             )
 
             if not valid_value or not valid_time:
-                raise ValueError(f"{room}: 측정값 또는 시각을 확인하세요.")
+                raise ValueError(
+                    f"{room}: Check the measurement value or time."
+                )
 
             rows.append([
                 room,
