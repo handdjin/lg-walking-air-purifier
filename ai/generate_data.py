@@ -4,47 +4,44 @@ import random
 from pathlib import Path
 
 
-# ---------- 생성 설정 ----------
+# ---------- Generation settings ----------
 
 ROOMS = ["living_room", "kitchen", "bedroom"]
 
-# generate_data.py 옆에 data 폴더를 만듭니다.
 OUTPUT = Path(__file__).resolve().parent / "data"
 
 EVENT_SEED = 100
 VISIT_SEED = 200
 
-# 구현 예시입니다. B 담당자와 확인한 뒤 확정하세요.
+# Confirm these days with Part B.
 SHIFTED_TEST_DAYS = [55, 56, 57]
 
 RUN_ID = "run_001"
 
 
-# ---------- 공통 공기질 계산 ----------
+# ---------- Shared air quality calculation ----------
 
 def step_pm25(current_pm25, event_increase, purifying):
-    """한 방의 1분 뒤 농도를 계산합니다."""
+    """Calculate a room's concentration one minute later."""
     value = current_pm25 + event_increase
 
-    # 10을 초과한 부분의 1% 자연 감소
     value -= max(value - 10, 0) * 0.01
 
-    # 정화 중에는 추가 5% 감소, 최저 5
     if purifying:
         value = max(5, value * 0.95)
 
     return value
 
 
-# ---------- 저장 보조 기능 ----------
+# ---------- Output helpers ----------
 
 def clock(minute):
-    """하루의 분 번호를 HH:MM 문자열로 바꿉니다."""
+    """Convert minutes since midnight to an HH:MM string."""
     return f"{minute // 60:02d}:{minute % 60:02d}"
 
 
 def save_csv(filename, rows):
-    """표를 CSV 파일로 저장합니다."""
+    """Save records to a CSV file."""
     with (OUTPUT / filename).open(
         "w", newline="", encoding="utf-8-sig"
     ) as file:
@@ -56,7 +53,7 @@ def save_csv(filename, rows):
         writer.writerows(rows)
 
 
-# ---------- 데이터 생성 ----------
+# ---------- Data generation ----------
 
 def generate():
     OUTPUT.mkdir(parents=True, exist_ok=True)
@@ -67,7 +64,7 @@ def generate():
     event_records = []
 
     for day in range(1, 61):
-        # 오염과 방문의 무작위 선택을 독립적으로 관리합니다.
+        # Use independent random generators for events and visits.
         event_rng = random.Random(EVENT_SEED + day)
         visit_rng = random.Random(VISIT_SEED + day)
 
@@ -85,14 +82,14 @@ def generate():
             "scenario_day": day,
         }
 
-        # 시각은 00:00부터 지난 분으로 표시합니다.
+        # Represent time as minutes since midnight.
         # 1080 = 18:00, 1200 = 20:00, 1320 = 22:00
         if day in SHIFTED_TEST_DAYS:
             dinner_range = (1200, 1320)
         else:
             dinner_range = (1080, 1200)
 
-        # 방, 활동, 시작 범위, 지속 시간 범위, 분당 증가량
+        # Room, activity, start range, duration range, increase per minute
         event_specs = [
             ("kitchen", "breakfast", 420, 540, 10, 20, 3),
             ("kitchen", "dinner", *dinner_range, 10, 20, 3),
@@ -118,12 +115,12 @@ def generate():
                 "increase_per_minute": increase,
             })
 
-        # 매일 독립적으로 초기화합니다.
+        # Initialize each day independently.
         concentrations = {room: 10.0 for room in ROOMS}
         last_value = {room: None for room in ROOMS}
         last_time = {room: None for room in ROOMS}
 
-        # 오늘의 실제 값과 입력 후보를 잠시 보관합니다.
+        # Temporarily store today's ground truth and input samples.
         daily_truth = {}
         daily_samples = []
 
@@ -134,7 +131,7 @@ def generate():
         for minute in range(1440):
             arrival = minute == next_arrival
 
-            # 1) 도착 시 위치 변경
+            # 1) Update the location on arrival.
             if arrival:
                 if minute > 0:
                     room_index = (room_index + 1) % 3
@@ -150,7 +147,7 @@ def generate():
 
             current_room = ROOMS[room_index]
 
-            # 2) 도착 측정 또는 같은 방에서의 정기 측정
+            # 2) Measure on arrival or periodically while staying.
             should_measure = (
                 arrival
                 or last_time[current_room] is None
@@ -170,14 +167,14 @@ def generate():
                     "measured_pm25": measured,
                 })
 
-                # 3) 측정값에 따라 정화 상태 결정
+                # 3) Update purification based on the measurement.
                 if measured >= 35:
                     purifying = True
                 elif measured <= 15:
                     purifying = False
-                # 그 사이는 기존 상태 유지
+                # Otherwise, retain the current state.
 
-            # 4) 10분마다 실제 기록과 AI 입력 저장
+            # 4) Record ground truth and AI inputs every 10 minutes.
             if minute % 10 == 0:
                 for room in ROOMS:
                     daily_truth[(minute, room)] = concentrations[room]
@@ -213,7 +210,7 @@ def generate():
                                 minute - last_time[room],
                         })
 
-            # 5) 이번 1분의 오염·정화를 반영해 다음 농도 계산
+            # 5) Apply this minute's events and purification.
             for room in ROOMS:
                 increase = sum(
                     amount
@@ -227,7 +224,7 @@ def generate():
                     purifying and room == current_room,
                 )
 
-        # 하루를 계산한 뒤 30분 후 실제 값을 정답으로 붙입니다.
+        # Attach 30-minute-ahead labels after simulating the day.
         for row in daily_samples:
             hour, minute = map(int, row["target_time"].split(":"))
             target_minute = hour * 60 + minute
@@ -238,7 +235,7 @@ def generate():
 
         ai_samples.extend(daily_samples)
 
-    # ---------- 파일 저장 ----------
+    # ---------- Save files ----------
 
     save_csv("ground_truth.csv", ground_truth)
     save_csv("observations.csv", observations)
@@ -288,16 +285,16 @@ def generate():
         encoding="utf-8",
     )
 
-    print("데이터 생성 완료")
-    print("실제 기록:", len(ground_truth), "행")
-    print("측정 기록:", len(observations), "행")
-    print("AI 자료:", len(ai_samples), "행")
+    print("Data generation complete")
+    print("Ground-truth records:", len(ground_truth), "rows")
+    print("Observation records:", len(observations), "rows")
+    print("AI samples:", len(ai_samples), "rows")
 
     for split in ["train", "validation", "test"]:
         count = sum(row["split"] == split for row in ai_samples)
-        print(split, ":", count, "행")
+        print(split, ":", count, "rows")
 
-    print("저장 위치:", OUTPUT)
+    print("Output directory:", OUTPUT)
 
 
 if __name__ == "__main__":
