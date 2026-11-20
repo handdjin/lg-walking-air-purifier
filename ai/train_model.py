@@ -9,7 +9,7 @@ FEATURES = [
 LABEL = "target_pm25_30min"
 
 
-# 모델 학습·평가·저장 파트
+# Model training, evaluation, and saving
 import json
 from pathlib import Path
 
@@ -41,26 +41,28 @@ ROOMS = {"living_room", "kitchen", "bedroom"}
 
 
 def load_split(name, first_day, last_day):
-    """CSV를 읽고 날짜·입력·정답 시각을 검사합니다."""
+    """Read a CSV and validate dates, inputs, and target times."""
     path = ROOT / "data" / f"{name}.csv"
     data = pd.read_csv(path)
 
     if data.empty:
-        raise ValueError(f"{name}: 자료가 없습니다.")
+        raise ValueError(f"{name}: No data found.")
 
     if not data["scenario_day"].between(first_day, last_day).all():
-        raise ValueError(f"{name}: 잘못된 날짜가 포함되어 있습니다.")
+        raise ValueError(f"{name}: Dates are outside the expected range.")
 
     if not data["split"].eq(name).all():
-        raise ValueError(f"{name}: split 구분이 잘못되었습니다.")
+        raise ValueError(f"{name}: Invalid split labels.")
 
     if set(data["room_id"]) != ROOMS:
-        raise ValueError(f"{name}: 방 이름을 확인하세요.")
+        raise ValueError(f"{name}: Check the room names.")
 
     numeric = data[FEATURES[1:] + [LABEL]].to_numpy(dtype=float)
 
     if not np.isfinite(numeric).all() or (numeric < 0).any():
-        raise ValueError(f"{name}: 결측·음수·잘못된 숫자가 있습니다.")
+        raise ValueError(
+            f"{name}: Missing, negative, or invalid numeric values."
+        )
 
     reference = (
         pd.to_timedelta(data["prediction_time"] + ":00")
@@ -89,20 +91,22 @@ def load_split(name, first_day, last_day):
     )
 
     if not valid_times.all():
-        raise ValueError(f"{name}: 측정 시각 또는 정답 시각이 잘못되었습니다.")
+        raise ValueError(
+            f"{name}: Invalid measurement or target times."
+        )
 
     duplicate = data.duplicated(
         ["run_id", "scenario_day", "prediction_time", "room_id"]
     )
 
     if duplicate.any():
-        raise ValueError(f"{name}: 중복된 사례가 있습니다.")
+        raise ValueError(f"{name}: Duplicate samples found.")
 
     return data
 
 
 def make_model(max_depth):
-    """방 이름 변환과 Random Forest를 하나로 묶습니다."""
+    """Combine room encoding and Random Forest in one pipeline."""
     preprocessing = ColumnTransformer([
         (
             "room",
@@ -140,11 +144,11 @@ def main():
 
     candidates = []
 
-    # 검증 자료로 두 설정을 비교합니다.
+    # Compare two settings using validation data.
     for depth in [8, None]:
         model = make_model(depth)
 
-        # 입력과 정답을 별도로 전달합니다.
+        # Pass inputs and labels separately.
         model.fit(train[FEATURES], train[LABEL])
 
         prediction = model.predict(validation[FEATURES])
@@ -157,17 +161,17 @@ def main():
         candidates.append((error, depth, model))
 
         print(
-            "최대 깊이:", depth,
-            "/ 검증 MAE:", round(error, 4),
+            "Maximum depth:", depth,
+            "/ Validation MAE:", round(error, 4),
         )
 
-    # 검증 오차가 가장 작은 모델 선택
+    # Select the model with the lowest validation error.
     validation_mae, depth, best_model = min(
         candidates,
         key=lambda item: item[0],
     )
 
-    # 모델 선택 후 시험 자료를 평가합니다.
+    # Evaluate the test data after model selection.
     test = load_split("test", 52, 60)
 
     prediction = best_model.predict(test[FEATURES])
@@ -177,7 +181,7 @@ def main():
         prediction,
     )
 
-    # 비교 기준: 마지막 측정값을 미래 예측값으로 그대로 사용
+    # Baseline: use the latest measurement as the future prediction.
     baseline_mae = mean_absolute_error(
         test[LABEL],
         test["last_measured_pm25"],
@@ -226,7 +230,7 @@ def main():
     output = ROOT / "artifacts"
     output.mkdir(exist_ok=True)
 
-    # 입력 변환과 모델을 함께 저장합니다.
+    # Save preprocessing and the model together.
     joblib.dump(
         best_model,
         output / "pm25_model.joblib",
@@ -242,11 +246,11 @@ def main():
         encoding="utf-8",
     )
 
-    print("\n학습·평가 완료")
-    print("시험 MAE:", round(test_mae, 4))
-    print("기준선 MAE:", round(baseline_mae, 4))
-    print("방별 MAE:", room_mae)
-    print("저장 위치:", output)
+    print("\nTraining and evaluation complete")
+    print("Test MAE:", round(test_mae, 4))
+    print("Baseline MAE:", round(baseline_mae, 4))
+    print("MAE by room:", room_mae)
+    print("Output directory:", output)
 
 
 if __name__ == "__main__":
