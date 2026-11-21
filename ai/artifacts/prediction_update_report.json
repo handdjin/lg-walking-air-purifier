@@ -1,0 +1,827 @@
+{
+  "result": "PASS",
+  "scope": "Controlled simulator/backend verification; not a real-phone or accuracy test",
+  "checks": [
+    "arrival measurement",
+    "latest measured values",
+    "fractional measurement age",
+    "periodic measurement updates",
+    "hidden-state exclusion",
+    "status payload",
+    "gradual purification",
+    "periodic replanning"
+  ],
+  "records": [
+    {
+      "reference_seconds": 31200,
+      "model_inputs": [
+        {
+          "room_id": "living_room",
+          "hour": 8,
+          "minute": 40,
+          "last_measured_pm25": 10.0,
+          "minutes_since_measurement": 0.0
+        },
+        {
+          "room_id": "kitchen",
+          "hour": 8,
+          "minute": 40,
+          "last_measured_pm25": 10.0,
+          "minutes_since_measurement": 10.0
+        },
+        {
+          "room_id": "bedroom",
+          "hour": 8,
+          "minute": 40,
+          "last_measured_pm25": 10.0,
+          "minutes_since_measurement": 5.0
+        }
+      ],
+      "observations": {
+        "living_room": {
+          "pm25": 10.0,
+          "measured_at_seconds": 31200,
+          "source_minute": 520,
+          "age_seconds": 0
+        },
+        "kitchen": {
+          "pm25": 10.0,
+          "measured_at_seconds": 30600,
+          "source_minute": 510,
+          "age_seconds": 600
+        },
+        "bedroom": {
+          "pm25": 10.0,
+          "measured_at_seconds": 30900,
+          "source_minute": 515,
+          "age_seconds": 300
+        }
+      },
+      "forecast": {
+        "reference_minute": 520,
+        "target_minute": 550,
+        "status": "ok",
+        "predictions": {
+          "living_room": 10.0,
+          "kitchen": 47.189095123630544,
+          "bedroom": 15.030704245063212
+        }
+      },
+      "decision": {
+        "action": "move",
+        "target_room": "kitchen",
+        "reason": "highest_score",
+        "decided_at_seconds": 31200,
+        "prediction_horizon_minutes": 30,
+        "threshold": 35.0,
+        "travel_weight": 1.0,
+        "rooms": {
+          "bedroom": {
+            "predicted_pm25": 15.030704245063212,
+            "reachable": true,
+            "travel_steps": 13,
+            "travel_seconds": 130,
+            "score": 12.864037578396546,
+            "eligible": false
+          },
+          "kitchen": {
+            "predicted_pm25": 47.189095123630544,
+            "reachable": true,
+            "travel_steps": 10,
+            "travel_seconds": 100,
+            "score": 45.52242845696388,
+            "eligible": true
+          },
+          "living_room": {
+            "predicted_pm25": 10.0,
+            "reachable": true,
+            "travel_steps": 0,
+            "travel_seconds": 0,
+            "score": 10.0,
+            "eligible": false
+          }
+        }
+      }
+    },
+    {
+      "reference_seconds": 31800,
+      "model_inputs": [
+        {
+          "room_id": "living_room",
+          "hour": 8,
+          "minute": 50,
+          "last_measured_pm25": 10.0,
+          "minutes_since_measurement": 10.0
+        },
+        {
+          "room_id": "kitchen",
+          "hour": 8,
+          "minute": 50,
+          "last_measured_pm25": 10.0,
+          "minutes_since_measurement": 8.333333333333371
+        },
+        {
+          "room_id": "bedroom",
+          "hour": 8,
+          "minute": 50,
+          "last_measured_pm25": 10.0,
+          "minutes_since_measurement": 15.0
+        }
+      ],
+      "observations": {
+        "living_room": {
+          "pm25": 10.0,
+          "measured_at_seconds": 31200,
+          "source_minute": 520,
+          "age_seconds": 600
+        },
+        "kitchen": {
+          "pm25": 10.0,
+          "measured_at_seconds": 31300,
+          "source_minute": 521,
+          "age_seconds": 500
+        },
+        "bedroom": {
+          "pm25": 10.0,
+          "measured_at_seconds": 30900,
+          "source_minute": 515,
+          "age_seconds": 900
+        }
+      },
+      "forecast": {
+        "reference_minute": 530,
+        "target_minute": 560,
+        "status": "ok",
+        "predictions": {
+          "living_room": 10.0,
+          "kitchen": 36.83965541590147,
+          "bedroom": 14.581041915259043
+        }
+      },
+      "decision": {
+        "action": "stay",
+        "target_room": "kitchen",
+        "reason": "current_room_selected",
+        "decided_at_seconds": 31800,
+        "prediction_horizon_minutes": 30,
+        "threshold": 35.0,
+        "travel_weight": 1.0,
+        "rooms": {
+          "bedroom": {
+            "predicted_pm25": 14.581041915259043,
+            "reachable": true,
+            "travel_steps": 15,
+            "travel_seconds": 150,
+            "score": 12.081041915259043,
+            "eligible": false
+          },
+          "kitchen": {
+            "predicted_pm25": 36.83965541590147,
+            "reachable": true,
+            "travel_steps": 0,
+            "travel_seconds": 0,
+            "score": 36.83965541590147,
+            "eligible": true
+          },
+          "living_room": {
+            "predicted_pm25": 10.0,
+            "reachable": true,
+            "travel_steps": 10,
+            "travel_seconds": 100,
+            "score": 8.333333333333334,
+            "eligible": false
+          }
+        }
+      }
+    },
+    {
+      "reference_seconds": 32400,
+      "model_inputs": [
+        {
+          "room_id": "living_room",
+          "hour": 9,
+          "minute": 0,
+          "last_measured_pm25": 10.0,
+          "minutes_since_measurement": 20.0
+        },
+        {
+          "room_id": "kitchen",
+          "hour": 9,
+          "minute": 0,
+          "last_measured_pm25": 10.0,
+          "minutes_since_measurement": 8.333333333333371
+        },
+        {
+          "room_id": "bedroom",
+          "hour": 9,
+          "minute": 0,
+          "last_measured_pm25": 10.0,
+          "minutes_since_measurement": 25.0
+        }
+      ],
+      "observations": {
+        "living_room": {
+          "pm25": 10.0,
+          "measured_at_seconds": 31200,
+          "source_minute": 520,
+          "age_seconds": 1200
+        },
+        "kitchen": {
+          "pm25": 10.0,
+          "measured_at_seconds": 31900,
+          "source_minute": 531,
+          "age_seconds": 500
+        },
+        "bedroom": {
+          "pm25": 10.0,
+          "measured_at_seconds": 30900,
+          "source_minute": 515,
+          "age_seconds": 1500
+        }
+      },
+      "forecast": {
+        "reference_minute": 540,
+        "target_minute": 570,
+        "status": "ok",
+        "predictions": {
+          "living_room": 10.0,
+          "kitchen": 27.16747818541101,
+          "bedroom": 16.165525925207337
+        }
+      },
+      "decision": {
+        "action": "wait",
+        "target_room": null,
+        "reason": "all_predictions_below_threshold",
+        "decided_at_seconds": 32400,
+        "prediction_horizon_minutes": 30,
+        "threshold": 35.0,
+        "travel_weight": 1.0,
+        "rooms": {
+          "bedroom": {
+            "predicted_pm25": 16.165525925207337,
+            "reachable": true,
+            "travel_steps": 15,
+            "travel_seconds": 150,
+            "score": 13.665525925207337,
+            "eligible": false
+          },
+          "kitchen": {
+            "predicted_pm25": 27.16747818541101,
+            "reachable": true,
+            "travel_steps": 0,
+            "travel_seconds": 0,
+            "score": 27.16747818541101,
+            "eligible": false
+          },
+          "living_room": {
+            "predicted_pm25": 10.0,
+            "reachable": true,
+            "travel_steps": 10,
+            "travel_seconds": 100,
+            "score": 8.333333333333334,
+            "eligible": false
+          }
+        }
+      }
+    },
+    {
+      "reference_seconds": 33000,
+      "model_inputs": [
+        {
+          "room_id": "living_room",
+          "hour": 9,
+          "minute": 10,
+          "last_measured_pm25": 10.0,
+          "minutes_since_measurement": 30.0
+        },
+        {
+          "room_id": "kitchen",
+          "hour": 9,
+          "minute": 10,
+          "last_measured_pm25": 12.97,
+          "minutes_since_measurement": 8.333333333333371
+        },
+        {
+          "room_id": "bedroom",
+          "hour": 9,
+          "minute": 10,
+          "last_measured_pm25": 10.0,
+          "minutes_since_measurement": 35.0
+        }
+      ],
+      "observations": {
+        "living_room": {
+          "pm25": 10.0,
+          "measured_at_seconds": 31200,
+          "source_minute": 520,
+          "age_seconds": 1800
+        },
+        "kitchen": {
+          "pm25": 12.97,
+          "measured_at_seconds": 32500,
+          "source_minute": 541,
+          "age_seconds": 500
+        },
+        "bedroom": {
+          "pm25": 10.0,
+          "measured_at_seconds": 30900,
+          "source_minute": 515,
+          "age_seconds": 2100
+        }
+      },
+      "forecast": {
+        "reference_minute": 550,
+        "target_minute": 580,
+        "status": "ok",
+        "predictions": {
+          "living_room": 10.0,
+          "kitchen": 20.6211465506417,
+          "bedroom": 17.686756475221554
+        }
+      },
+      "decision": {
+        "action": "wait",
+        "target_room": null,
+        "reason": "all_predictions_below_threshold",
+        "decided_at_seconds": 33000,
+        "prediction_horizon_minutes": 30,
+        "threshold": 35.0,
+        "travel_weight": 1.0,
+        "rooms": {
+          "bedroom": {
+            "predicted_pm25": 17.686756475221554,
+            "reachable": true,
+            "travel_steps": 15,
+            "travel_seconds": 150,
+            "score": 15.186756475221554,
+            "eligible": false
+          },
+          "kitchen": {
+            "predicted_pm25": 20.6211465506417,
+            "reachable": true,
+            "travel_steps": 0,
+            "travel_seconds": 0,
+            "score": 20.6211465506417,
+            "eligible": false
+          },
+          "living_room": {
+            "predicted_pm25": 10.0,
+            "reachable": true,
+            "travel_steps": 10,
+            "travel_seconds": 100,
+            "score": 8.333333333333334,
+            "eligible": false
+          }
+        }
+      }
+    },
+    {
+      "reference_seconds": 33600,
+      "model_inputs": [
+        {
+          "room_id": "living_room",
+          "hour": 9,
+          "minute": 20,
+          "last_measured_pm25": 10.0,
+          "minutes_since_measurement": 40.0
+        },
+        {
+          "room_id": "kitchen",
+          "hour": 9,
+          "minute": 20,
+          "last_measured_pm25": 38.11453848516121,
+          "minutes_since_measurement": 8.333333333333371
+        },
+        {
+          "room_id": "bedroom",
+          "hour": 9,
+          "minute": 20,
+          "last_measured_pm25": 10.0,
+          "minutes_since_measurement": 45.0
+        }
+      ],
+      "observations": {
+        "living_room": {
+          "pm25": 10.0,
+          "measured_at_seconds": 31200,
+          "source_minute": 520,
+          "age_seconds": 2400
+        },
+        "kitchen": {
+          "pm25": 38.11453848516121,
+          "measured_at_seconds": 33100,
+          "source_minute": 551,
+          "age_seconds": 500
+        },
+        "bedroom": {
+          "pm25": 10.0,
+          "measured_at_seconds": 30900,
+          "source_minute": 515,
+          "age_seconds": 2700
+        }
+      },
+      "forecast": {
+        "reference_minute": 560,
+        "target_minute": 590,
+        "status": "ok",
+        "predictions": {
+          "living_room": 10.0,
+          "kitchen": 19.199057640865664,
+          "bedroom": 20.02298509728096
+        }
+      },
+      "decision": {
+        "action": "wait",
+        "target_room": null,
+        "reason": "all_predictions_below_threshold",
+        "decided_at_seconds": 33600,
+        "prediction_horizon_minutes": 30,
+        "threshold": 35.0,
+        "travel_weight": 1.0,
+        "rooms": {
+          "bedroom": {
+            "predicted_pm25": 20.02298509728096,
+            "reachable": true,
+            "travel_steps": 15,
+            "travel_seconds": 150,
+            "score": 17.52298509728096,
+            "eligible": false
+          },
+          "kitchen": {
+            "predicted_pm25": 19.199057640865664,
+            "reachable": true,
+            "travel_steps": 0,
+            "travel_seconds": 0,
+            "score": 19.199057640865664,
+            "eligible": false
+          },
+          "living_room": {
+            "predicted_pm25": 10.0,
+            "reachable": true,
+            "travel_steps": 10,
+            "travel_seconds": 100,
+            "score": 8.333333333333334,
+            "eligible": false
+          }
+        }
+      }
+    },
+    {
+      "reference_seconds": 34200,
+      "model_inputs": [
+        {
+          "room_id": "living_room",
+          "hour": 9,
+          "minute": 30,
+          "last_measured_pm25": 10.0,
+          "minutes_since_measurement": 50.0
+        },
+        {
+          "room_id": "kitchen",
+          "hour": 9,
+          "minute": 30,
+          "last_measured_pm25": 22.090458447812285,
+          "minutes_since_measurement": 8.333333333333371
+        },
+        {
+          "room_id": "bedroom",
+          "hour": 9,
+          "minute": 30,
+          "last_measured_pm25": 10.0,
+          "minutes_since_measurement": 55.0
+        }
+      ],
+      "observations": {
+        "living_room": {
+          "pm25": 10.0,
+          "measured_at_seconds": 31200,
+          "source_minute": 520,
+          "age_seconds": 3000
+        },
+        "kitchen": {
+          "pm25": 22.090458447812285,
+          "measured_at_seconds": 33700,
+          "source_minute": 561,
+          "age_seconds": 500
+        },
+        "bedroom": {
+          "pm25": 10.0,
+          "measured_at_seconds": 30900,
+          "source_minute": 515,
+          "age_seconds": 3300
+        }
+      },
+      "forecast": {
+        "reference_minute": 570,
+        "target_minute": 600,
+        "status": "ok",
+        "predictions": {
+          "living_room": 10.0,
+          "kitchen": 17.715956237671424,
+          "bedroom": 20.112367515326095
+        }
+      },
+      "decision": {
+        "action": "wait",
+        "target_room": null,
+        "reason": "all_predictions_below_threshold",
+        "decided_at_seconds": 34200,
+        "prediction_horizon_minutes": 30,
+        "threshold": 35.0,
+        "travel_weight": 1.0,
+        "rooms": {
+          "bedroom": {
+            "predicted_pm25": 20.112367515326095,
+            "reachable": true,
+            "travel_steps": 15,
+            "travel_seconds": 150,
+            "score": 17.612367515326095,
+            "eligible": false
+          },
+          "kitchen": {
+            "predicted_pm25": 17.715956237671424,
+            "reachable": true,
+            "travel_steps": 0,
+            "travel_seconds": 0,
+            "score": 17.715956237671424,
+            "eligible": false
+          },
+          "living_room": {
+            "predicted_pm25": 10.0,
+            "reachable": true,
+            "travel_steps": 10,
+            "travel_seconds": 100,
+            "score": 8.333333333333334,
+            "eligible": false
+          }
+        }
+      }
+    },
+    {
+      "reference_seconds": 34800,
+      "model_inputs": [
+        {
+          "room_id": "living_room",
+          "hour": 9,
+          "minute": 40,
+          "last_measured_pm25": 10.0,
+          "minutes_since_measurement": 60.0
+        },
+        {
+          "room_id": "kitchen",
+          "hour": 9,
+          "minute": 40,
+          "last_measured_pm25": 12.693774741240444,
+          "minutes_since_measurement": 8.333333333333371
+        },
+        {
+          "room_id": "bedroom",
+          "hour": 9,
+          "minute": 40,
+          "last_measured_pm25": 10.0,
+          "minutes_since_measurement": 65.0
+        }
+      ],
+      "observations": {
+        "living_room": {
+          "pm25": 10.0,
+          "measured_at_seconds": 31200,
+          "source_minute": 520,
+          "age_seconds": 3600
+        },
+        "kitchen": {
+          "pm25": 12.693774741240444,
+          "measured_at_seconds": 34300,
+          "source_minute": 571,
+          "age_seconds": 500
+        },
+        "bedroom": {
+          "pm25": 10.0,
+          "measured_at_seconds": 30900,
+          "source_minute": 515,
+          "age_seconds": 3900
+        }
+      },
+      "forecast": {
+        "reference_minute": 580,
+        "target_minute": 610,
+        "status": "ok",
+        "predictions": {
+          "living_room": 10.0,
+          "kitchen": 11.826893791432381,
+          "bedroom": 21.266928386932776
+        }
+      },
+      "decision": {
+        "action": "wait",
+        "target_room": null,
+        "reason": "all_predictions_below_threshold",
+        "decided_at_seconds": 34800,
+        "prediction_horizon_minutes": 30,
+        "threshold": 35.0,
+        "travel_weight": 1.0,
+        "rooms": {
+          "bedroom": {
+            "predicted_pm25": 21.266928386932776,
+            "reachable": true,
+            "travel_steps": 15,
+            "travel_seconds": 150,
+            "score": 18.766928386932776,
+            "eligible": false
+          },
+          "kitchen": {
+            "predicted_pm25": 11.826893791432381,
+            "reachable": true,
+            "travel_steps": 0,
+            "travel_seconds": 0,
+            "score": 11.826893791432381,
+            "eligible": false
+          },
+          "living_room": {
+            "predicted_pm25": 10.0,
+            "reachable": true,
+            "travel_steps": 10,
+            "travel_seconds": 100,
+            "score": 8.333333333333334,
+            "eligible": false
+          }
+        }
+      }
+    }
+  ],
+  "purification_evaluation_only": [
+    {
+      "time_seconds": 33120,
+      "pm25": 37.19202524637823
+    },
+    {
+      "time_seconds": 33180,
+      "pm25": 35.07409974421873
+    },
+    {
+      "time_seconds": 33240,
+      "pm25": 33.08219080943771
+    },
+    {
+      "time_seconds": 33300,
+      "pm25": 31.208800456276165
+    },
+    {
+      "time_seconds": 33360,
+      "pm25": 29.44687682912773
+    },
+    {
+      "time_seconds": 33420,
+      "pm25": 27.78978765779463
+    },
+    {
+      "time_seconds": 33480,
+      "pm25": 26.231295292155846
+    },
+    {
+      "time_seconds": 33540,
+      "pm25": 24.765533222272573
+    },
+    {
+      "time_seconds": 33600,
+      "pm25": 23.386983995547354
+    },
+    {
+      "time_seconds": 33660,
+      "pm25": 22.090458447812285
+    },
+    {
+      "time_seconds": 33720,
+      "pm25": 20.871076170167452
+    },
+    {
+      "time_seconds": 33780,
+      "pm25": 19.724247138042486
+    },
+    {
+      "time_seconds": 33840,
+      "pm25": 18.645654433328957
+    },
+    {
+      "time_seconds": 33900,
+      "pm25": 17.631237994545884
+    },
+    {
+      "time_seconds": 33960,
+      "pm25": 16.677179333870402
+    },
+    {
+      "time_seconds": 34020,
+      "pm25": 15.779887163505114
+    },
+    {
+      "time_seconds": 34080,
+      "pm25": 14.93598387727656
+    },
+    {
+      "time_seconds": 34140,
+      "pm25": 14.142292836578603
+    },
+    {
+      "time_seconds": 34200,
+      "pm25": 13.395826412802174
+    },
+    {
+      "time_seconds": 34260,
+      "pm25": 12.693774741240444
+    }
+  ],
+  "events": [
+    {
+      "time_seconds": 31200,
+      "type": "arrival",
+      "room": "living_room"
+    },
+    {
+      "time_seconds": 31200,
+      "type": "measurement",
+      "room": "living_room",
+      "reason": "arrival",
+      "pm25": 10.0,
+      "measured_at_seconds": 31200,
+      "source_minute": 520
+    },
+    {
+      "time_seconds": 31200,
+      "type": "move_requested",
+      "destination": "kitchen"
+    },
+    {
+      "time_seconds": 31300,
+      "type": "arrival",
+      "room": "kitchen"
+    },
+    {
+      "time_seconds": 31300,
+      "type": "measurement",
+      "room": "kitchen",
+      "reason": "arrival",
+      "pm25": 10.0,
+      "measured_at_seconds": 31300,
+      "source_minute": 521
+    },
+    {
+      "time_seconds": 31900,
+      "type": "measurement",
+      "room": "kitchen",
+      "reason": "periodic",
+      "pm25": 10.0,
+      "measured_at_seconds": 31900,
+      "source_minute": 531
+    },
+    {
+      "time_seconds": 32500,
+      "type": "measurement",
+      "room": "kitchen",
+      "reason": "periodic",
+      "pm25": 12.97,
+      "measured_at_seconds": 32500,
+      "source_minute": 541
+    },
+    {
+      "time_seconds": 33100,
+      "type": "measurement",
+      "room": "kitchen",
+      "reason": "periodic",
+      "pm25": 38.11453848516121,
+      "measured_at_seconds": 33100,
+      "source_minute": 551
+    },
+    {
+      "time_seconds": 33100,
+      "type": "purification_on",
+      "room": "kitchen",
+      "reason": "measurement"
+    },
+    {
+      "time_seconds": 33700,
+      "type": "measurement",
+      "room": "kitchen",
+      "reason": "periodic",
+      "pm25": 22.090458447812285,
+      "measured_at_seconds": 33700,
+      "source_minute": 561
+    },
+    {
+      "time_seconds": 34300,
+      "type": "measurement",
+      "room": "kitchen",
+      "reason": "periodic",
+      "pm25": 12.693774741240444,
+      "measured_at_seconds": 34300,
+      "source_minute": 571
+    },
+    {
+      "time_seconds": 34300,
+      "type": "purification_off",
+      "room": "kitchen",
+      "reason": "measurement"
+    }
+  ]
+}
