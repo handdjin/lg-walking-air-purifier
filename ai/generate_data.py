@@ -1,14 +1,18 @@
 import csv
 import json
 import random
+from datetime import datetime
 from pathlib import Path
+
+from simulation import Simulator
 
 
 # ---------- Generation settings ----------
 
-ROOMS = ["living_room", "kitchen", "bedroom"]
+ROOT = Path(__file__).resolve().parent
+OUTPUT = ROOT / "data"
 
-OUTPUT = Path(__file__).resolve().parent / "data"
+ROOMS = ["living_room", "kitchen", "bedroom"]
 
 EVENT_SEED = 100
 VISIT_SEED = 200
@@ -16,38 +20,32 @@ VISIT_SEED = 200
 # Confirm these days with Part B.
 SHIFTED_TEST_DAYS = [55, 56, 57]
 
-RUN_ID = "run_001"
-
-
-# ---------- Shared air quality calculation ----------
-
-def step_pm25(current_pm25, event_increase, purifying):
-    """Calculate a room's concentration one minute later."""
-    value = current_pm25 + event_increase
-
-    value -= max(value - 10, 0) * 0.01
-
-    if purifying:
-        value = max(5, value * 0.95)
-
-    return value
+RUN_ID = "run_simulator_v2"
+DAY_SECONDS = 86400
 
 
 # ---------- Output helpers ----------
 
-def clock(minute):
-    """Convert minutes since midnight to an HH:MM string."""
-    return f"{minute // 60:02d}:{minute % 60:02d}"
+def clock(seconds):
+    """Keep HH:MM compatibility without rounding timestamps."""
+    if seconds % 60 != 0:
+        raise ValueError(
+            "This schedule requires minute-aligned measurements."
+        )
+
+    return f"{seconds // 3600:02d}:{seconds % 3600 // 60:02d}"
 
 
 def save_csv(filename, rows):
     """Save records to a CSV file."""
     with (OUTPUT / filename).open(
-        "w", newline="", encoding="utf-8-sig"
+        "w",
+        newline="",
+        encoding="utf-8-sig",
     ) as file:
         writer = csv.DictWriter(
             file,
-            fieldnames=list(rows[0].keys()),
+            fieldnames=list(rows[0]),
         )
         writer.writeheader()
         writer.writerows(rows)
@@ -56,18 +54,14 @@ def save_csv(filename, rows):
 # ---------- Data generation ----------
 
 def generate():
-    OUTPUT.mkdir(parents=True, exist_ok=True)
-
-    ground_truth = []
+    truth = []
     observations = []
-    ai_samples = []
-    event_records = []
+    samples = []
+    events = []
+    actions = []
+    scenarios = []
 
     for day in range(1, 61):
-        # Use independent random generators for events and visits.
-        event_rng = random.Random(EVENT_SEED + day)
-        visit_rng = random.Random(VISIT_SEED + day)
-
         pattern = ["basic", "slow", "irregular"][(day - 1) % 3]
 
         if day <= 42:
@@ -82,60 +76,111 @@ def generate():
             "scenario_day": day,
         }
 
-        # Represent time as minutes since midnight.
-        # 1080 = 18:00, 1200 = 20:00, 1320 = 22:00
-        if day in SHIFTED_TEST_DAYS:
-            dinner_range = (1200, 1320)
-        else:
-            dinner_range = (1080, 1200)
+        visit_rng = random.Random(VISIT_SEED + day)
 
-        # Room, activity, start range, duration range, increase per minute
-        event_specs = [
-            ("kitchen", "breakfast", 420, 540, 10, 20, 3),
-            ("kitchen", "dinner", *dinner_range, 10, 20, 3),
-            ("living_room", "cleaning", 780, 1020, 5, 10, 2),
-            ("bedroom", "bedding", 420, 600, 5, 10, 2),
-        ]
+        # Use Part B's environment, movement, sensing, and purification.
+        sim = Simulator(
+            seed=EVENT_SEED,
+            day_index=day - 1,
+            late_dinner=day in SHIFTED_TEST_DAYS,
+        )
 
-        daily_events = []
+        scenario = sim.get_scenario()
 
-        for room, activity, lo, hi, dmin, dmax, increase in event_specs:
-            start = event_rng.randint(lo, hi)
-            duration = event_rng.randint(dmin, dmax)
-            end = start + duration
+        scenarios.append({
+            **metadata,
+            "scenario": scenario,
+            "map": sim.get_map(),
+        })
 
-            daily_events.append((room, start, end, increase))
-
-            event_records.append({
+        # Store event schedules for auditing, not as model inputs.
+        for event in scenario["events"]:
+            events.append({
                 **metadata,
-                "room_id": room,
-                "activity": activity,
-                "start": clock(start),
-                "end": clock(end),
-                "increase_per_minute": increase,
+                "room_id": event["room"],
+                "activity": event["activity"],
+                "start": clock(event["start_minute"] * 60),
+                "end": clock(event["end_minute"] * 60),
             })
 
-        # Initialize each day independently.
-        concentrations = {room: 10.0 for room in ROOMS}
-        last_value = {room: None for room in ROOMS}
-        last_time = {room: None for room in ROOMS}
-
-        # Temporarily store today's ground truth and input samples.
         daily_truth = {}
         daily_samples = []
 
         room_index = 0
-        next_arrival = 0
-        purifying = False
+        departure = None
+        arrival_due = None
+        target_room = None
 
-        for minute in range(1440):
-            arrival = minute == next_arrival
+        state = sim.start()
 
-            # 1) Update the location on arrival.
-            if arrival:
-                if minute > 0:
-                    room_index = (room_index + 1) % 3
+        while state["simulation_time_seconds"] < DAY_SECONDS:
+            seconds = state["simulation_time_seconds"]
 
+            # Confirm arrival before scheduling the next visit.
+            if arrival_due is not None and seconds == arrival_due:
+                if (
+                    state["remaining_steps"]
+                    or state["current_room"] != target_room
+                ):
+                    raise ValueError(
+                        "Actual arrival does not match the patrol schedule."
+                    )
+
+                room_index = (room_index + 1) % len(ROOMS)
+
+                arrival_due = None
+                target_room = None
+                departure = None
+
+            # Record after measurements and before new departure commands.
+            if seconds % 600 == 0:
+                actual = sim.get_ground_truth()
+
+                # Hidden ground truth is used only for labels and evaluation.
+                for room in ROOMS:
+                    value = actual["pm25"][room]
+
+                    daily_truth[(seconds, room)] = value
+
+                    truth.append({
+                        **metadata,
+                        "timestamp": clock(seconds),
+                        "room_id": room,
+                        "true_pm25": value,
+                    })
+
+                # Model inputs use observations only.
+                readings = state["observations"]
+
+                complete = all(
+                    readings[room]["pm25"] is not None
+                    for room in ROOMS
+                )
+
+                target_within_day = seconds + 1800 < DAY_SECONDS
+
+                if complete and target_within_day:
+                    for room in ROOMS:
+                        reading = readings[room]
+                        measured = reading["measured_at_seconds"]
+
+                        daily_samples.append({
+                            **metadata,
+                            "prediction_time": clock(seconds),
+                            "target_time": clock(seconds + 1800),
+                            "last_measured_at": clock(measured),
+                            "patrol_pattern": pattern,
+                            "split": split,
+                            "room_id": room,
+                            "hour": seconds // 3600,
+                            "minute": seconds % 3600 // 60,
+                            "last_measured_pm25": reading["pm25"],
+                            "minutes_since_measurement":
+                                (seconds - measured) / 60,
+                        })
+
+            # Preserve arrival-to-arrival intervals, including travel.
+            if arrival_due is None:
                 if pattern == "basic":
                     gap = 10
                 elif pattern == "slow":
@@ -143,123 +188,131 @@ def generate():
                 else:
                     gap = visit_rng.choice([10, 20, 30])
 
-                next_arrival = minute + gap
+                arrival_due = seconds + gap * 60
 
-            current_room = ROOMS[room_index]
+                target_room = ROOMS[
+                    (room_index + 1) % len(ROOMS)
+                ]
 
-            # 2) Measure on arrival or periodically while staying.
-            should_measure = (
-                arrival
-                or last_time[current_room] is None
-                or minute - last_time[current_room] >= 10
+                if arrival_due < DAY_SECONDS:
+                    travel = sim.estimate_travel_seconds(target_room)
+
+                    if travel <= 0 or travel > gap * 60:
+                        raise ValueError(
+                            "Travel time does not fit the patrol interval."
+                        )
+
+                    departure = arrival_due - travel
+
+                    if departure % state["tick_seconds"]:
+                        raise ValueError(
+                            "Departure must align with simulator ticks."
+                        )
+
+            # Move early enough to reach the next room on schedule.
+            if departure is not None and seconds == departure:
+                sim.move_to(target_room)
+                departure = None
+
+            # Advance actual movement, environment, sensing, and purification.
+            state = sim.step()
+
+        # Attach same-day, 30-minute-ahead ground-truth labels.
+        for row in daily_samples:
+            hour, minute = map(
+                int,
+                row["target_time"].split(":"),
             )
 
-            if should_measure:
-                measured = concentrations[current_room]
-
-                last_value[current_room] = measured
-                last_time[current_room] = minute
-
-                observations.append({
-                    **metadata,
-                    "measured_at": clock(minute),
-                    "room_id": current_room,
-                    "measured_pm25": measured,
-                })
-
-                # 3) Update purification based on the measurement.
-                if measured >= 35:
-                    purifying = True
-                elif measured <= 15:
-                    purifying = False
-                # Otherwise, retain the current state.
-
-            # 4) Record ground truth and AI inputs every 10 minutes.
-            if minute % 10 == 0:
-                for room in ROOMS:
-                    daily_truth[(minute, room)] = concentrations[room]
-
-                    ground_truth.append({
-                        **metadata,
-                        "timestamp": clock(minute),
-                        "room_id": room,
-                        "true_pm25": concentrations[room],
-                    })
-
-                all_measured = all(
-                    last_time[room] is not None
-                    for room in ROOMS
-                )
-
-                target_within_day = minute + 30 < 1440
-
-                if all_measured and target_within_day:
-                    for room in ROOMS:
-                        daily_samples.append({
-                            **metadata,
-                            "prediction_time": clock(minute),
-                            "target_time": clock(minute + 30),
-                            "last_measured_at": clock(last_time[room]),
-                            "patrol_pattern": pattern,
-                            "split": split,
-                            "room_id": room,
-                            "hour": minute // 60,
-                            "minute": minute % 60,
-                            "last_measured_pm25": last_value[room],
-                            "minutes_since_measurement":
-                                minute - last_time[room],
-                        })
-
-            # 5) Apply this minute's events and purification.
-            for room in ROOMS:
-                increase = sum(
-                    amount
-                    for event_room, start, end, amount in daily_events
-                    if event_room == room and start <= minute < end
-                )
-
-                concentrations[room] = step_pm25(
-                    concentrations[room],
-                    increase,
-                    purifying and room == current_room,
-                )
-
-        # Attach 30-minute-ahead labels after simulating the day.
-        for row in daily_samples:
-            hour, minute = map(int, row["target_time"].split(":"))
-            target_minute = hour * 60 + minute
+            target_seconds = hour * 3600 + minute * 60
 
             row["target_pm25_30min"] = daily_truth[
-                (target_minute, row["room_id"])
+                (target_seconds, row["room_id"])
             ]
 
-        ai_samples.extend(daily_samples)
+        samples.extend(daily_samples)
 
-    # ---------- Save files ----------
+        # Collect the complete history once per day.
+        for entry in sim.get_history():
+            seconds = entry["time_seconds"]
 
-    save_csv("ground_truth.csv", ground_truth)
-    save_csv("observations.csv", observations)
-    save_csv("ai_dataset.csv", ai_samples)
-    save_csv("events.csv", event_records)
+            actions.append({
+                **metadata,
+                "time_seconds": seconds,
+                "event_json": json.dumps(
+                    entry,
+                    ensure_ascii=False,
+                ),
+            })
+
+            if (
+                entry["type"] == "measurement"
+                and seconds < DAY_SECONDS
+            ):
+                observations.append({
+                    **metadata,
+                    "measured_at": clock(seconds),
+                    "measured_at_seconds": seconds,
+                    "source_minute": entry["source_minute"],
+                    "room_id": entry["room"],
+                    "measured_pm25": entry["pm25"],
+                })
+
+        print(
+            f"Day {day}/60 complete: {pattern}",
+            flush=True,
+        )
+
+    if len(truth) != 25920:
+        raise ValueError("Unexpected ground-truth record count.")
+
+    # Preserve previous data after successful simulation.
+    if OUTPUT.exists():
+        stamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+        backup = ROOT / f"data_backup_{stamp}"
+
+        OUTPUT.rename(backup)
+
+        print("Previous data preserved at:", backup)
+
+    OUTPUT.mkdir(parents=True)
+
+    # ---------- Save datasets ----------
+
+    datasets = [
+        ("ground_truth.csv", truth),
+        ("observations.csv", observations),
+        ("ai_dataset.csv", samples),
+        ("events.csv", events),
+        ("actions.csv", actions),
+    ]
+
+    for filename, rows in datasets:
+        save_csv(filename, rows)
 
     for split in ["train", "validation", "test"]:
-        rows = [
-            row for row in ai_samples
+        selected = [
+            row for row in samples
             if row["split"] == split
         ]
-        save_csv(f"{split}.csv", rows)
 
+        save_csv(f"{split}.csv", selected)
+
+        print(split, len(selected), "rows")
+
+    # Store shared environment settings and maps for reproduction.
     config = {
-        "version": "1.0",
+        "version": "simulator-generator-v2",
         "run_id": RUN_ID,
         "days": 60,
-        "event_seed_base": EVENT_SEED,
+        "event_seed": EVENT_SEED,
+        "event_day_index": "scenario_day - 1",
         "visit_seed_base": VISIT_SEED,
-        "daily_seed_rule": "seed_base + scenario_day",
+        "visit_seed_rule": "visit_seed_base + scenario_day",
         "shifted_test_days": SHIFTED_TEST_DAYS,
-        "movement": "instant room change at arrival",
-        "arrival_purification_state":
-            "retain device state, then update from arrival measurement",
+        "patrol_interval": "arrival-to-arrival including travel",
+        "timestamp_format":
+            "HH:MM; exact minute-aligned patrol measurements",
         "features": [
             "room_id",
             "hour",
@@ -268,32 +321,21 @@ def generate():
             "minutes_since_measurement",
         ],
         "label": "target_pm25_30min",
-        "rules": {
-            "initial_pm25": 10,
-            "natural_decay": 0.01,
-            "purification_rate": 0.05,
-            "purification_minimum": 5,
-            "on_threshold": 35,
-            "off_threshold": 15,
-            "record_interval_minutes": 10,
-            "prediction_horizon_minutes": 30,
-        },
+        "scenarios": scenarios,
     }
 
     (OUTPUT / "config.json").write_text(
-        json.dumps(config, indent=2),
+        json.dumps(
+            config,
+            indent=2,
+            ensure_ascii=False,
+        ),
         encoding="utf-8",
     )
 
-    print("Data generation complete")
-    print("Ground-truth records:", len(ground_truth), "rows")
-    print("Observation records:", len(observations), "rows")
-    print("AI samples:", len(ai_samples), "rows")
-
-    for split in ["train", "validation", "test"]:
-        count = sum(row["split"] == split for row in ai_samples)
-        print(split, ":", count, "rows")
-
+    print("Ground-truth records:", len(truth))
+    print("Observation records:", len(observations))
+    print("AI samples:", len(samples))
     print("Output directory:", OUTPUT)
 
 

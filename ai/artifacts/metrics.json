@@ -1,5 +1,5 @@
 {
-  "sklearn_version": "1.9.1",
+  "sklearn_version": "1.7.2",
   "features": [
     "room_id",
     "hour",
@@ -8,19 +8,19 @@
     "minutes_since_measurement"
   ],
   "label": "target_pm25_30min",
-  "selected_max_depth": 8,
-  "validation_mae": 1.2301956260833793,
-  "test_mae": 1.2666970429862672,
-  "baseline_test_mae": 1.5914035698571922,
+  "selected_max_depth": null,
+  "validation_mae": 1.0839109878850026,
+  "test_mae": 1.0984369859560288,
+  "baseline_test_mae": 1.6387811234232719,
   "per_room_mae": {
-    "bedroom": 0.5546096548231231,
-    "kitchen": 2.6913721333188425,
-    "living_room": 0.5541093408168359
+    "bedroom": 0.43152887284509317,
+    "kitchen": 2.4009502175409883,
+    "living_room": 0.4628318674820047
   },
   "per_pattern_mae": {
-    "basic": 1.2643988883973998,
-    "irregular": 1.2057157362312951,
-    "slow": 1.33015842704127
+    "basic": 0.9317348365409712,
+    "irregular": 1.2153083248513816,
+    "slow": 1.1504170460075944
   },
   "rows": {
     "train": 17358,

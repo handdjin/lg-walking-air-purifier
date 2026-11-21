@@ -1,17 +1,18 @@
 {
-  "version": "1.0",
-  "run_id": "run_001",
+  "version": "simulator-generator-v2",
+  "run_id": "run_simulator_v2",
   "days": 60,
-  "event_seed_base": 100,
+  "event_seed": 100,
+  "event_day_index": "scenario_day - 1",
   "visit_seed_base": 200,
-  "daily_seed_rule": "seed_base + scenario_day",
+  "visit_seed_rule": "visit_seed_base + scenario_day",
   "shifted_test_days": [
     55,
     56,
     57
   ],
-  "movement": "instant room change at arrival",
-  "arrival_purification_state": "retain device state, then update from arrival measurement",
+  "patrol_interval": "arrival-to-arrival including travel",
+  "timestamp_format": "HH:MM; exact minute-aligned patrol measurements",
   "features": [
     "room_id",
     "hour",
@@ -20,14 +21,7566 @@
     "minutes_since_measurement"
   ],
   "label": "target_pm25_30min",
-  "rules": {
-    "initial_pm25": 10,
-    "natural_decay": 0.01,
-    "purification_rate": 0.05,
-    "purification_minimum": 5,
-    "on_threshold": 35,
-    "off_threshold": 15,
-    "record_interval_minutes": 10,
-    "prediction_horizon_minutes": 30
-  }
+  "scenarios": [
+    {
+      "run_id": "run_simulator_v2",
+      "scenario_day": 1,
+      "scenario": {
+        "rule_version": "pm25-v1.1",
+        "event_seed_version": "pm25-v1",
+        "partial_purification": "(1 - purification_rate) ** (seconds / 60)",
+        "seed": 100,
+        "day_index": 0,
+        "late_dinner": false,
+        "schedule_source": "generated",
+        "time_unit": "minute",
+        "pm25_unit": "µg/m³",
+        "initial_pm25": 10.0,
+        "natural_baseline": 10.0,
+        "natural_decay_rate": 0.01,
+        "purification_rate": 0.05,
+        "purification_floor": 5.0,
+        "activity_rates": {
+          "cooking": 3.0,
+          "cleaning": 2.0,
+          "bedding": 2.0
+        },
+        "events": [
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 439,
+            "end_minute": 454
+          },
+          {
+            "room": "bedroom",
+            "activity": "bedding",
+            "start_minute": 472,
+            "end_minute": 481
+          },
+          {
+            "room": "living_room",
+            "activity": "cleaning",
+            "start_minute": 791,
+            "end_minute": 801
+          },
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 1182,
+            "end_minute": 1202
+          }
+        ],
+        "tick_seconds": 10,
+        "measurement_interval_seconds": 600,
+        "purify_on": 35,
+        "purify_off": 15
+      },
+      "map": {
+        "width": 15,
+        "height": 11,
+        "grid": [
+          "###############",
+          "#......#......#",
+          "#..XX..#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "#..X...########",
+          "#..X...#......#",
+          "#......#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "###############"
+        ],
+        "legend": {
+          "#": "wall",
+          ".": "floor",
+          "X": "obstacle",
+          "D": "door"
+        },
+        "rooms": [
+          {
+            "id": "living_room",
+            "name": "거실",
+            "bounds": [
+              1,
+              1,
+              6,
+              9
+            ],
+            "target": [
+              2,
+              4
+            ]
+          },
+          {
+            "id": "kitchen",
+            "name": "주방",
+            "bounds": [
+              8,
+              1,
+              13,
+              4
+            ],
+            "target": [
+              11,
+              3
+            ]
+          },
+          {
+            "id": "bedroom",
+            "name": "침실",
+            "bounds": [
+              8,
+              6,
+              13,
+              9
+            ],
+            "target": [
+              11,
+              8
+            ]
+          }
+        ],
+        "start": [
+          2,
+          4
+        ]
+      }
+    },
+    {
+      "run_id": "run_simulator_v2",
+      "scenario_day": 2,
+      "scenario": {
+        "rule_version": "pm25-v1.1",
+        "event_seed_version": "pm25-v1",
+        "partial_purification": "(1 - purification_rate) ** (seconds / 60)",
+        "seed": 100,
+        "day_index": 1,
+        "late_dinner": false,
+        "schedule_source": "generated",
+        "time_unit": "minute",
+        "pm25_unit": "µg/m³",
+        "initial_pm25": 10.0,
+        "natural_baseline": 10.0,
+        "natural_decay_rate": 0.01,
+        "purification_rate": 0.05,
+        "purification_floor": 5.0,
+        "activity_rates": {
+          "cooking": 3.0,
+          "cleaning": 2.0,
+          "bedding": 2.0
+        },
+        "events": [
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 452,
+            "end_minute": 469
+          },
+          {
+            "room": "bedroom",
+            "activity": "bedding",
+            "start_minute": 506,
+            "end_minute": 511
+          },
+          {
+            "room": "living_room",
+            "activity": "cleaning",
+            "start_minute": 880,
+            "end_minute": 886
+          },
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 1128,
+            "end_minute": 1140
+          }
+        ],
+        "tick_seconds": 10,
+        "measurement_interval_seconds": 600,
+        "purify_on": 35,
+        "purify_off": 15
+      },
+      "map": {
+        "width": 15,
+        "height": 11,
+        "grid": [
+          "###############",
+          "#......#......#",
+          "#..XX..#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "#..X...########",
+          "#..X...#......#",
+          "#......#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "###############"
+        ],
+        "legend": {
+          "#": "wall",
+          ".": "floor",
+          "X": "obstacle",
+          "D": "door"
+        },
+        "rooms": [
+          {
+            "id": "living_room",
+            "name": "거실",
+            "bounds": [
+              1,
+              1,
+              6,
+              9
+            ],
+            "target": [
+              2,
+              4
+            ]
+          },
+          {
+            "id": "kitchen",
+            "name": "주방",
+            "bounds": [
+              8,
+              1,
+              13,
+              4
+            ],
+            "target": [
+              11,
+              3
+            ]
+          },
+          {
+            "id": "bedroom",
+            "name": "침실",
+            "bounds": [
+              8,
+              6,
+              13,
+              9
+            ],
+            "target": [
+              11,
+              8
+            ]
+          }
+        ],
+        "start": [
+          2,
+          4
+        ]
+      }
+    },
+    {
+      "run_id": "run_simulator_v2",
+      "scenario_day": 3,
+      "scenario": {
+        "rule_version": "pm25-v1.1",
+        "event_seed_version": "pm25-v1",
+        "partial_purification": "(1 - purification_rate) ** (seconds / 60)",
+        "seed": 100,
+        "day_index": 2,
+        "late_dinner": false,
+        "schedule_source": "generated",
+        "time_unit": "minute",
+        "pm25_unit": "µg/m³",
+        "initial_pm25": 10.0,
+        "natural_baseline": 10.0,
+        "natural_decay_rate": 0.01,
+        "purification_rate": 0.05,
+        "purification_floor": 5.0,
+        "activity_rates": {
+          "cooking": 3.0,
+          "cleaning": 2.0,
+          "bedding": 2.0
+        },
+        "events": [
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 430,
+            "end_minute": 442
+          },
+          {
+            "room": "bedroom",
+            "activity": "bedding",
+            "start_minute": 553,
+            "end_minute": 563
+          },
+          {
+            "room": "living_room",
+            "activity": "cleaning",
+            "start_minute": 885,
+            "end_minute": 894
+          },
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 1151,
+            "end_minute": 1168
+          }
+        ],
+        "tick_seconds": 10,
+        "measurement_interval_seconds": 600,
+        "purify_on": 35,
+        "purify_off": 15
+      },
+      "map": {
+        "width": 15,
+        "height": 11,
+        "grid": [
+          "###############",
+          "#......#......#",
+          "#..XX..#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "#..X...########",
+          "#..X...#......#",
+          "#......#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "###############"
+        ],
+        "legend": {
+          "#": "wall",
+          ".": "floor",
+          "X": "obstacle",
+          "D": "door"
+        },
+        "rooms": [
+          {
+            "id": "living_room",
+            "name": "거실",
+            "bounds": [
+              1,
+              1,
+              6,
+              9
+            ],
+            "target": [
+              2,
+              4
+            ]
+          },
+          {
+            "id": "kitchen",
+            "name": "주방",
+            "bounds": [
+              8,
+              1,
+              13,
+              4
+            ],
+            "target": [
+              11,
+              3
+            ]
+          },
+          {
+            "id": "bedroom",
+            "name": "침실",
+            "bounds": [
+              8,
+              6,
+              13,
+              9
+            ],
+            "target": [
+              11,
+              8
+            ]
+          }
+        ],
+        "start": [
+          2,
+          4
+        ]
+      }
+    },
+    {
+      "run_id": "run_simulator_v2",
+      "scenario_day": 4,
+      "scenario": {
+        "rule_version": "pm25-v1.1",
+        "event_seed_version": "pm25-v1",
+        "partial_purification": "(1 - purification_rate) ** (seconds / 60)",
+        "seed": 100,
+        "day_index": 3,
+        "late_dinner": false,
+        "schedule_source": "generated",
+        "time_unit": "minute",
+        "pm25_unit": "µg/m³",
+        "initial_pm25": 10.0,
+        "natural_baseline": 10.0,
+        "natural_decay_rate": 0.01,
+        "purification_rate": 0.05,
+        "purification_floor": 5.0,
+        "activity_rates": {
+          "cooking": 3.0,
+          "cleaning": 2.0,
+          "bedding": 2.0
+        },
+        "events": [
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 525,
+            "end_minute": 538
+          },
+          {
+            "room": "bedroom",
+            "activity": "bedding",
+            "start_minute": 588,
+            "end_minute": 596
+          },
+          {
+            "room": "living_room",
+            "activity": "cleaning",
+            "start_minute": 951,
+            "end_minute": 958
+          },
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 1145,
+            "end_minute": 1157
+          }
+        ],
+        "tick_seconds": 10,
+        "measurement_interval_seconds": 600,
+        "purify_on": 35,
+        "purify_off": 15
+      },
+      "map": {
+        "width": 15,
+        "height": 11,
+        "grid": [
+          "###############",
+          "#......#......#",
+          "#..XX..#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "#..X...########",
+          "#..X...#......#",
+          "#......#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "###############"
+        ],
+        "legend": {
+          "#": "wall",
+          ".": "floor",
+          "X": "obstacle",
+          "D": "door"
+        },
+        "rooms": [
+          {
+            "id": "living_room",
+            "name": "거실",
+            "bounds": [
+              1,
+              1,
+              6,
+              9
+            ],
+            "target": [
+              2,
+              4
+            ]
+          },
+          {
+            "id": "kitchen",
+            "name": "주방",
+            "bounds": [
+              8,
+              1,
+              13,
+              4
+            ],
+            "target": [
+              11,
+              3
+            ]
+          },
+          {
+            "id": "bedroom",
+            "name": "침실",
+            "bounds": [
+              8,
+              6,
+              13,
+              9
+            ],
+            "target": [
+              11,
+              8
+            ]
+          }
+        ],
+        "start": [
+          2,
+          4
+        ]
+      }
+    },
+    {
+      "run_id": "run_simulator_v2",
+      "scenario_day": 5,
+      "scenario": {
+        "rule_version": "pm25-v1.1",
+        "event_seed_version": "pm25-v1",
+        "partial_purification": "(1 - purification_rate) ** (seconds / 60)",
+        "seed": 100,
+        "day_index": 4,
+        "late_dinner": false,
+        "schedule_source": "generated",
+        "time_unit": "minute",
+        "pm25_unit": "µg/m³",
+        "initial_pm25": 10.0,
+        "natural_baseline": 10.0,
+        "natural_decay_rate": 0.01,
+        "purification_rate": 0.05,
+        "purification_floor": 5.0,
+        "activity_rates": {
+          "cooking": 3.0,
+          "cleaning": 2.0,
+          "bedding": 2.0
+        },
+        "events": [
+          {
+            "room": "bedroom",
+            "activity": "bedding",
+            "start_minute": 463,
+            "end_minute": 472
+          },
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 526,
+            "end_minute": 541
+          },
+          {
+            "room": "living_room",
+            "activity": "cleaning",
+            "start_minute": 864,
+            "end_minute": 873
+          },
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 1129,
+            "end_minute": 1144
+          }
+        ],
+        "tick_seconds": 10,
+        "measurement_interval_seconds": 600,
+        "purify_on": 35,
+        "purify_off": 15
+      },
+      "map": {
+        "width": 15,
+        "height": 11,
+        "grid": [
+          "###############",
+          "#......#......#",
+          "#..XX..#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "#..X...########",
+          "#..X...#......#",
+          "#......#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "###############"
+        ],
+        "legend": {
+          "#": "wall",
+          ".": "floor",
+          "X": "obstacle",
+          "D": "door"
+        },
+        "rooms": [
+          {
+            "id": "living_room",
+            "name": "거실",
+            "bounds": [
+              1,
+              1,
+              6,
+              9
+            ],
+            "target": [
+              2,
+              4
+            ]
+          },
+          {
+            "id": "kitchen",
+            "name": "주방",
+            "bounds": [
+              8,
+              1,
+              13,
+              4
+            ],
+            "target": [
+              11,
+              3
+            ]
+          },
+          {
+            "id": "bedroom",
+            "name": "침실",
+            "bounds": [
+              8,
+              6,
+              13,
+              9
+            ],
+            "target": [
+              11,
+              8
+            ]
+          }
+        ],
+        "start": [
+          2,
+          4
+        ]
+      }
+    },
+    {
+      "run_id": "run_simulator_v2",
+      "scenario_day": 6,
+      "scenario": {
+        "rule_version": "pm25-v1.1",
+        "event_seed_version": "pm25-v1",
+        "partial_purification": "(1 - purification_rate) ** (seconds / 60)",
+        "seed": 100,
+        "day_index": 5,
+        "late_dinner": false,
+        "schedule_source": "generated",
+        "time_unit": "minute",
+        "pm25_unit": "µg/m³",
+        "initial_pm25": 10.0,
+        "natural_baseline": 10.0,
+        "natural_decay_rate": 0.01,
+        "purification_rate": 0.05,
+        "purification_floor": 5.0,
+        "activity_rates": {
+          "cooking": 3.0,
+          "cleaning": 2.0,
+          "bedding": 2.0
+        },
+        "events": [
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 503,
+            "end_minute": 513
+          },
+          {
+            "room": "bedroom",
+            "activity": "bedding",
+            "start_minute": 552,
+            "end_minute": 558
+          },
+          {
+            "room": "living_room",
+            "activity": "cleaning",
+            "start_minute": 870,
+            "end_minute": 878
+          },
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 1192,
+            "end_minute": 1204
+          }
+        ],
+        "tick_seconds": 10,
+        "measurement_interval_seconds": 600,
+        "purify_on": 35,
+        "purify_off": 15
+      },
+      "map": {
+        "width": 15,
+        "height": 11,
+        "grid": [
+          "###############",
+          "#......#......#",
+          "#..XX..#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "#..X...########",
+          "#..X...#......#",
+          "#......#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "###############"
+        ],
+        "legend": {
+          "#": "wall",
+          ".": "floor",
+          "X": "obstacle",
+          "D": "door"
+        },
+        "rooms": [
+          {
+            "id": "living_room",
+            "name": "거실",
+            "bounds": [
+              1,
+              1,
+              6,
+              9
+            ],
+            "target": [
+              2,
+              4
+            ]
+          },
+          {
+            "id": "kitchen",
+            "name": "주방",
+            "bounds": [
+              8,
+              1,
+              13,
+              4
+            ],
+            "target": [
+              11,
+              3
+            ]
+          },
+          {
+            "id": "bedroom",
+            "name": "침실",
+            "bounds": [
+              8,
+              6,
+              13,
+              9
+            ],
+            "target": [
+              11,
+              8
+            ]
+          }
+        ],
+        "start": [
+          2,
+          4
+        ]
+      }
+    },
+    {
+      "run_id": "run_simulator_v2",
+      "scenario_day": 7,
+      "scenario": {
+        "rule_version": "pm25-v1.1",
+        "event_seed_version": "pm25-v1",
+        "partial_purification": "(1 - purification_rate) ** (seconds / 60)",
+        "seed": 100,
+        "day_index": 6,
+        "late_dinner": false,
+        "schedule_source": "generated",
+        "time_unit": "minute",
+        "pm25_unit": "µg/m³",
+        "initial_pm25": 10.0,
+        "natural_baseline": 10.0,
+        "natural_decay_rate": 0.01,
+        "purification_rate": 0.05,
+        "purification_floor": 5.0,
+        "activity_rates": {
+          "cooking": 3.0,
+          "cleaning": 2.0,
+          "bedding": 2.0
+        },
+        "events": [
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 443,
+            "end_minute": 461
+          },
+          {
+            "room": "bedroom",
+            "activity": "bedding",
+            "start_minute": 573,
+            "end_minute": 583
+          },
+          {
+            "room": "living_room",
+            "activity": "cleaning",
+            "start_minute": 809,
+            "end_minute": 814
+          },
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 1160,
+            "end_minute": 1170
+          }
+        ],
+        "tick_seconds": 10,
+        "measurement_interval_seconds": 600,
+        "purify_on": 35,
+        "purify_off": 15
+      },
+      "map": {
+        "width": 15,
+        "height": 11,
+        "grid": [
+          "###############",
+          "#......#......#",
+          "#..XX..#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "#..X...########",
+          "#..X...#......#",
+          "#......#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "###############"
+        ],
+        "legend": {
+          "#": "wall",
+          ".": "floor",
+          "X": "obstacle",
+          "D": "door"
+        },
+        "rooms": [
+          {
+            "id": "living_room",
+            "name": "거실",
+            "bounds": [
+              1,
+              1,
+              6,
+              9
+            ],
+            "target": [
+              2,
+              4
+            ]
+          },
+          {
+            "id": "kitchen",
+            "name": "주방",
+            "bounds": [
+              8,
+              1,
+              13,
+              4
+            ],
+            "target": [
+              11,
+              3
+            ]
+          },
+          {
+            "id": "bedroom",
+            "name": "침실",
+            "bounds": [
+              8,
+              6,
+              13,
+              9
+            ],
+            "target": [
+              11,
+              8
+            ]
+          }
+        ],
+        "start": [
+          2,
+          4
+        ]
+      }
+    },
+    {
+      "run_id": "run_simulator_v2",
+      "scenario_day": 8,
+      "scenario": {
+        "rule_version": "pm25-v1.1",
+        "event_seed_version": "pm25-v1",
+        "partial_purification": "(1 - purification_rate) ** (seconds / 60)",
+        "seed": 100,
+        "day_index": 7,
+        "late_dinner": false,
+        "schedule_source": "generated",
+        "time_unit": "minute",
+        "pm25_unit": "µg/m³",
+        "initial_pm25": 10.0,
+        "natural_baseline": 10.0,
+        "natural_decay_rate": 0.01,
+        "purification_rate": 0.05,
+        "purification_floor": 5.0,
+        "activity_rates": {
+          "cooking": 3.0,
+          "cleaning": 2.0,
+          "bedding": 2.0
+        },
+        "events": [
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 442,
+            "end_minute": 460
+          },
+          {
+            "room": "bedroom",
+            "activity": "bedding",
+            "start_minute": 550,
+            "end_minute": 556
+          },
+          {
+            "room": "living_room",
+            "activity": "cleaning",
+            "start_minute": 786,
+            "end_minute": 795
+          },
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 1157,
+            "end_minute": 1173
+          }
+        ],
+        "tick_seconds": 10,
+        "measurement_interval_seconds": 600,
+        "purify_on": 35,
+        "purify_off": 15
+      },
+      "map": {
+        "width": 15,
+        "height": 11,
+        "grid": [
+          "###############",
+          "#......#......#",
+          "#..XX..#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "#..X...########",
+          "#..X...#......#",
+          "#......#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "###############"
+        ],
+        "legend": {
+          "#": "wall",
+          ".": "floor",
+          "X": "obstacle",
+          "D": "door"
+        },
+        "rooms": [
+          {
+            "id": "living_room",
+            "name": "거실",
+            "bounds": [
+              1,
+              1,
+              6,
+              9
+            ],
+            "target": [
+              2,
+              4
+            ]
+          },
+          {
+            "id": "kitchen",
+            "name": "주방",
+            "bounds": [
+              8,
+              1,
+              13,
+              4
+            ],
+            "target": [
+              11,
+              3
+            ]
+          },
+          {
+            "id": "bedroom",
+            "name": "침실",
+            "bounds": [
+              8,
+              6,
+              13,
+              9
+            ],
+            "target": [
+              11,
+              8
+            ]
+          }
+        ],
+        "start": [
+          2,
+          4
+        ]
+      }
+    },
+    {
+      "run_id": "run_simulator_v2",
+      "scenario_day": 9,
+      "scenario": {
+        "rule_version": "pm25-v1.1",
+        "event_seed_version": "pm25-v1",
+        "partial_purification": "(1 - purification_rate) ** (seconds / 60)",
+        "seed": 100,
+        "day_index": 8,
+        "late_dinner": false,
+        "schedule_source": "generated",
+        "time_unit": "minute",
+        "pm25_unit": "µg/m³",
+        "initial_pm25": 10.0,
+        "natural_baseline": 10.0,
+        "natural_decay_rate": 0.01,
+        "purification_rate": 0.05,
+        "purification_floor": 5.0,
+        "activity_rates": {
+          "cooking": 3.0,
+          "cleaning": 2.0,
+          "bedding": 2.0
+        },
+        "events": [
+          {
+            "room": "bedroom",
+            "activity": "bedding",
+            "start_minute": 466,
+            "end_minute": 473
+          },
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 479,
+            "end_minute": 499
+          },
+          {
+            "room": "living_room",
+            "activity": "cleaning",
+            "start_minute": 979,
+            "end_minute": 986
+          },
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 1104,
+            "end_minute": 1120
+          }
+        ],
+        "tick_seconds": 10,
+        "measurement_interval_seconds": 600,
+        "purify_on": 35,
+        "purify_off": 15
+      },
+      "map": {
+        "width": 15,
+        "height": 11,
+        "grid": [
+          "###############",
+          "#......#......#",
+          "#..XX..#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "#..X...########",
+          "#..X...#......#",
+          "#......#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "###############"
+        ],
+        "legend": {
+          "#": "wall",
+          ".": "floor",
+          "X": "obstacle",
+          "D": "door"
+        },
+        "rooms": [
+          {
+            "id": "living_room",
+            "name": "거실",
+            "bounds": [
+              1,
+              1,
+              6,
+              9
+            ],
+            "target": [
+              2,
+              4
+            ]
+          },
+          {
+            "id": "kitchen",
+            "name": "주방",
+            "bounds": [
+              8,
+              1,
+              13,
+              4
+            ],
+            "target": [
+              11,
+              3
+            ]
+          },
+          {
+            "id": "bedroom",
+            "name": "침실",
+            "bounds": [
+              8,
+              6,
+              13,
+              9
+            ],
+            "target": [
+              11,
+              8
+            ]
+          }
+        ],
+        "start": [
+          2,
+          4
+        ]
+      }
+    },
+    {
+      "run_id": "run_simulator_v2",
+      "scenario_day": 10,
+      "scenario": {
+        "rule_version": "pm25-v1.1",
+        "event_seed_version": "pm25-v1",
+        "partial_purification": "(1 - purification_rate) ** (seconds / 60)",
+        "seed": 100,
+        "day_index": 9,
+        "late_dinner": false,
+        "schedule_source": "generated",
+        "time_unit": "minute",
+        "pm25_unit": "µg/m³",
+        "initial_pm25": 10.0,
+        "natural_baseline": 10.0,
+        "natural_decay_rate": 0.01,
+        "purification_rate": 0.05,
+        "purification_floor": 5.0,
+        "activity_rates": {
+          "cooking": 3.0,
+          "cleaning": 2.0,
+          "bedding": 2.0
+        },
+        "events": [
+          {
+            "room": "bedroom",
+            "activity": "bedding",
+            "start_minute": 430,
+            "end_minute": 438
+          },
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 456,
+            "end_minute": 472
+          },
+          {
+            "room": "living_room",
+            "activity": "cleaning",
+            "start_minute": 854,
+            "end_minute": 859
+          },
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 1107,
+            "end_minute": 1122
+          }
+        ],
+        "tick_seconds": 10,
+        "measurement_interval_seconds": 600,
+        "purify_on": 35,
+        "purify_off": 15
+      },
+      "map": {
+        "width": 15,
+        "height": 11,
+        "grid": [
+          "###############",
+          "#......#......#",
+          "#..XX..#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "#..X...########",
+          "#..X...#......#",
+          "#......#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "###############"
+        ],
+        "legend": {
+          "#": "wall",
+          ".": "floor",
+          "X": "obstacle",
+          "D": "door"
+        },
+        "rooms": [
+          {
+            "id": "living_room",
+            "name": "거실",
+            "bounds": [
+              1,
+              1,
+              6,
+              9
+            ],
+            "target": [
+              2,
+              4
+            ]
+          },
+          {
+            "id": "kitchen",
+            "name": "주방",
+            "bounds": [
+              8,
+              1,
+              13,
+              4
+            ],
+            "target": [
+              11,
+              3
+            ]
+          },
+          {
+            "id": "bedroom",
+            "name": "침실",
+            "bounds": [
+              8,
+              6,
+              13,
+              9
+            ],
+            "target": [
+              11,
+              8
+            ]
+          }
+        ],
+        "start": [
+          2,
+          4
+        ]
+      }
+    },
+    {
+      "run_id": "run_simulator_v2",
+      "scenario_day": 11,
+      "scenario": {
+        "rule_version": "pm25-v1.1",
+        "event_seed_version": "pm25-v1",
+        "partial_purification": "(1 - purification_rate) ** (seconds / 60)",
+        "seed": 100,
+        "day_index": 10,
+        "late_dinner": false,
+        "schedule_source": "generated",
+        "time_unit": "minute",
+        "pm25_unit": "µg/m³",
+        "initial_pm25": 10.0,
+        "natural_baseline": 10.0,
+        "natural_decay_rate": 0.01,
+        "purification_rate": 0.05,
+        "purification_floor": 5.0,
+        "activity_rates": {
+          "cooking": 3.0,
+          "cleaning": 2.0,
+          "bedding": 2.0
+        },
+        "events": [
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 438,
+            "end_minute": 450
+          },
+          {
+            "room": "bedroom",
+            "activity": "bedding",
+            "start_minute": 481,
+            "end_minute": 488
+          },
+          {
+            "room": "living_room",
+            "activity": "cleaning",
+            "start_minute": 995,
+            "end_minute": 1001
+          },
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 1106,
+            "end_minute": 1122
+          }
+        ],
+        "tick_seconds": 10,
+        "measurement_interval_seconds": 600,
+        "purify_on": 35,
+        "purify_off": 15
+      },
+      "map": {
+        "width": 15,
+        "height": 11,
+        "grid": [
+          "###############",
+          "#......#......#",
+          "#..XX..#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "#..X...########",
+          "#..X...#......#",
+          "#......#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "###############"
+        ],
+        "legend": {
+          "#": "wall",
+          ".": "floor",
+          "X": "obstacle",
+          "D": "door"
+        },
+        "rooms": [
+          {
+            "id": "living_room",
+            "name": "거실",
+            "bounds": [
+              1,
+              1,
+              6,
+              9
+            ],
+            "target": [
+              2,
+              4
+            ]
+          },
+          {
+            "id": "kitchen",
+            "name": "주방",
+            "bounds": [
+              8,
+              1,
+              13,
+              4
+            ],
+            "target": [
+              11,
+              3
+            ]
+          },
+          {
+            "id": "bedroom",
+            "name": "침실",
+            "bounds": [
+              8,
+              6,
+              13,
+              9
+            ],
+            "target": [
+              11,
+              8
+            ]
+          }
+        ],
+        "start": [
+          2,
+          4
+        ]
+      }
+    },
+    {
+      "run_id": "run_simulator_v2",
+      "scenario_day": 12,
+      "scenario": {
+        "rule_version": "pm25-v1.1",
+        "event_seed_version": "pm25-v1",
+        "partial_purification": "(1 - purification_rate) ** (seconds / 60)",
+        "seed": 100,
+        "day_index": 11,
+        "late_dinner": false,
+        "schedule_source": "generated",
+        "time_unit": "minute",
+        "pm25_unit": "µg/m³",
+        "initial_pm25": 10.0,
+        "natural_baseline": 10.0,
+        "natural_decay_rate": 0.01,
+        "purification_rate": 0.05,
+        "purification_floor": 5.0,
+        "activity_rates": {
+          "cooking": 3.0,
+          "cleaning": 2.0,
+          "bedding": 2.0
+        },
+        "events": [
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 424,
+            "end_minute": 443
+          },
+          {
+            "room": "bedroom",
+            "activity": "bedding",
+            "start_minute": 588,
+            "end_minute": 597
+          },
+          {
+            "room": "living_room",
+            "activity": "cleaning",
+            "start_minute": 791,
+            "end_minute": 796
+          },
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 1091,
+            "end_minute": 1104
+          }
+        ],
+        "tick_seconds": 10,
+        "measurement_interval_seconds": 600,
+        "purify_on": 35,
+        "purify_off": 15
+      },
+      "map": {
+        "width": 15,
+        "height": 11,
+        "grid": [
+          "###############",
+          "#......#......#",
+          "#..XX..#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "#..X...########",
+          "#..X...#......#",
+          "#......#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "###############"
+        ],
+        "legend": {
+          "#": "wall",
+          ".": "floor",
+          "X": "obstacle",
+          "D": "door"
+        },
+        "rooms": [
+          {
+            "id": "living_room",
+            "name": "거실",
+            "bounds": [
+              1,
+              1,
+              6,
+              9
+            ],
+            "target": [
+              2,
+              4
+            ]
+          },
+          {
+            "id": "kitchen",
+            "name": "주방",
+            "bounds": [
+              8,
+              1,
+              13,
+              4
+            ],
+            "target": [
+              11,
+              3
+            ]
+          },
+          {
+            "id": "bedroom",
+            "name": "침실",
+            "bounds": [
+              8,
+              6,
+              13,
+              9
+            ],
+            "target": [
+              11,
+              8
+            ]
+          }
+        ],
+        "start": [
+          2,
+          4
+        ]
+      }
+    },
+    {
+      "run_id": "run_simulator_v2",
+      "scenario_day": 13,
+      "scenario": {
+        "rule_version": "pm25-v1.1",
+        "event_seed_version": "pm25-v1",
+        "partial_purification": "(1 - purification_rate) ** (seconds / 60)",
+        "seed": 100,
+        "day_index": 12,
+        "late_dinner": false,
+        "schedule_source": "generated",
+        "time_unit": "minute",
+        "pm25_unit": "µg/m³",
+        "initial_pm25": 10.0,
+        "natural_baseline": 10.0,
+        "natural_decay_rate": 0.01,
+        "purification_rate": 0.05,
+        "purification_floor": 5.0,
+        "activity_rates": {
+          "cooking": 3.0,
+          "cleaning": 2.0,
+          "bedding": 2.0
+        },
+        "events": [
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 449,
+            "end_minute": 460
+          },
+          {
+            "room": "bedroom",
+            "activity": "bedding",
+            "start_minute": 596,
+            "end_minute": 605
+          },
+          {
+            "room": "living_room",
+            "activity": "cleaning",
+            "start_minute": 890,
+            "end_minute": 897
+          },
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 1084,
+            "end_minute": 1103
+          }
+        ],
+        "tick_seconds": 10,
+        "measurement_interval_seconds": 600,
+        "purify_on": 35,
+        "purify_off": 15
+      },
+      "map": {
+        "width": 15,
+        "height": 11,
+        "grid": [
+          "###############",
+          "#......#......#",
+          "#..XX..#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "#..X...########",
+          "#..X...#......#",
+          "#......#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "###############"
+        ],
+        "legend": {
+          "#": "wall",
+          ".": "floor",
+          "X": "obstacle",
+          "D": "door"
+        },
+        "rooms": [
+          {
+            "id": "living_room",
+            "name": "거실",
+            "bounds": [
+              1,
+              1,
+              6,
+              9
+            ],
+            "target": [
+              2,
+              4
+            ]
+          },
+          {
+            "id": "kitchen",
+            "name": "주방",
+            "bounds": [
+              8,
+              1,
+              13,
+              4
+            ],
+            "target": [
+              11,
+              3
+            ]
+          },
+          {
+            "id": "bedroom",
+            "name": "침실",
+            "bounds": [
+              8,
+              6,
+              13,
+              9
+            ],
+            "target": [
+              11,
+              8
+            ]
+          }
+        ],
+        "start": [
+          2,
+          4
+        ]
+      }
+    },
+    {
+      "run_id": "run_simulator_v2",
+      "scenario_day": 14,
+      "scenario": {
+        "rule_version": "pm25-v1.1",
+        "event_seed_version": "pm25-v1",
+        "partial_purification": "(1 - purification_rate) ** (seconds / 60)",
+        "seed": 100,
+        "day_index": 13,
+        "late_dinner": false,
+        "schedule_source": "generated",
+        "time_unit": "minute",
+        "pm25_unit": "µg/m³",
+        "initial_pm25": 10.0,
+        "natural_baseline": 10.0,
+        "natural_decay_rate": 0.01,
+        "purification_rate": 0.05,
+        "purification_floor": 5.0,
+        "activity_rates": {
+          "cooking": 3.0,
+          "cleaning": 2.0,
+          "bedding": 2.0
+        },
+        "events": [
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 460,
+            "end_minute": 480
+          },
+          {
+            "room": "bedroom",
+            "activity": "bedding",
+            "start_minute": 544,
+            "end_minute": 551
+          },
+          {
+            "room": "living_room",
+            "activity": "cleaning",
+            "start_minute": 939,
+            "end_minute": 945
+          },
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 1120,
+            "end_minute": 1131
+          }
+        ],
+        "tick_seconds": 10,
+        "measurement_interval_seconds": 600,
+        "purify_on": 35,
+        "purify_off": 15
+      },
+      "map": {
+        "width": 15,
+        "height": 11,
+        "grid": [
+          "###############",
+          "#......#......#",
+          "#..XX..#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "#..X...########",
+          "#..X...#......#",
+          "#......#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "###############"
+        ],
+        "legend": {
+          "#": "wall",
+          ".": "floor",
+          "X": "obstacle",
+          "D": "door"
+        },
+        "rooms": [
+          {
+            "id": "living_room",
+            "name": "거실",
+            "bounds": [
+              1,
+              1,
+              6,
+              9
+            ],
+            "target": [
+              2,
+              4
+            ]
+          },
+          {
+            "id": "kitchen",
+            "name": "주방",
+            "bounds": [
+              8,
+              1,
+              13,
+              4
+            ],
+            "target": [
+              11,
+              3
+            ]
+          },
+          {
+            "id": "bedroom",
+            "name": "침실",
+            "bounds": [
+              8,
+              6,
+              13,
+              9
+            ],
+            "target": [
+              11,
+              8
+            ]
+          }
+        ],
+        "start": [
+          2,
+          4
+        ]
+      }
+    },
+    {
+      "run_id": "run_simulator_v2",
+      "scenario_day": 15,
+      "scenario": {
+        "rule_version": "pm25-v1.1",
+        "event_seed_version": "pm25-v1",
+        "partial_purification": "(1 - purification_rate) ** (seconds / 60)",
+        "seed": 100,
+        "day_index": 14,
+        "late_dinner": false,
+        "schedule_source": "generated",
+        "time_unit": "minute",
+        "pm25_unit": "µg/m³",
+        "initial_pm25": 10.0,
+        "natural_baseline": 10.0,
+        "natural_decay_rate": 0.01,
+        "purification_rate": 0.05,
+        "purification_floor": 5.0,
+        "activity_rates": {
+          "cooking": 3.0,
+          "cleaning": 2.0,
+          "bedding": 2.0
+        },
+        "events": [
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 510,
+            "end_minute": 527
+          },
+          {
+            "room": "bedroom",
+            "activity": "bedding",
+            "start_minute": 553,
+            "end_minute": 563
+          },
+          {
+            "room": "living_room",
+            "activity": "cleaning",
+            "start_minute": 828,
+            "end_minute": 837
+          },
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 1168,
+            "end_minute": 1178
+          }
+        ],
+        "tick_seconds": 10,
+        "measurement_interval_seconds": 600,
+        "purify_on": 35,
+        "purify_off": 15
+      },
+      "map": {
+        "width": 15,
+        "height": 11,
+        "grid": [
+          "###############",
+          "#......#......#",
+          "#..XX..#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "#..X...########",
+          "#..X...#......#",
+          "#......#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "###############"
+        ],
+        "legend": {
+          "#": "wall",
+          ".": "floor",
+          "X": "obstacle",
+          "D": "door"
+        },
+        "rooms": [
+          {
+            "id": "living_room",
+            "name": "거실",
+            "bounds": [
+              1,
+              1,
+              6,
+              9
+            ],
+            "target": [
+              2,
+              4
+            ]
+          },
+          {
+            "id": "kitchen",
+            "name": "주방",
+            "bounds": [
+              8,
+              1,
+              13,
+              4
+            ],
+            "target": [
+              11,
+              3
+            ]
+          },
+          {
+            "id": "bedroom",
+            "name": "침실",
+            "bounds": [
+              8,
+              6,
+              13,
+              9
+            ],
+            "target": [
+              11,
+              8
+            ]
+          }
+        ],
+        "start": [
+          2,
+          4
+        ]
+      }
+    },
+    {
+      "run_id": "run_simulator_v2",
+      "scenario_day": 16,
+      "scenario": {
+        "rule_version": "pm25-v1.1",
+        "event_seed_version": "pm25-v1",
+        "partial_purification": "(1 - purification_rate) ** (seconds / 60)",
+        "seed": 100,
+        "day_index": 15,
+        "late_dinner": false,
+        "schedule_source": "generated",
+        "time_unit": "minute",
+        "pm25_unit": "µg/m³",
+        "initial_pm25": 10.0,
+        "natural_baseline": 10.0,
+        "natural_decay_rate": 0.01,
+        "purification_rate": 0.05,
+        "purification_floor": 5.0,
+        "activity_rates": {
+          "cooking": 3.0,
+          "cleaning": 2.0,
+          "bedding": 2.0
+        },
+        "events": [
+          {
+            "room": "bedroom",
+            "activity": "bedding",
+            "start_minute": 455,
+            "end_minute": 462
+          },
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 504,
+            "end_minute": 521
+          },
+          {
+            "room": "living_room",
+            "activity": "cleaning",
+            "start_minute": 974,
+            "end_minute": 983
+          },
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 1162,
+            "end_minute": 1176
+          }
+        ],
+        "tick_seconds": 10,
+        "measurement_interval_seconds": 600,
+        "purify_on": 35,
+        "purify_off": 15
+      },
+      "map": {
+        "width": 15,
+        "height": 11,
+        "grid": [
+          "###############",
+          "#......#......#",
+          "#..XX..#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "#..X...########",
+          "#..X...#......#",
+          "#......#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "###############"
+        ],
+        "legend": {
+          "#": "wall",
+          ".": "floor",
+          "X": "obstacle",
+          "D": "door"
+        },
+        "rooms": [
+          {
+            "id": "living_room",
+            "name": "거실",
+            "bounds": [
+              1,
+              1,
+              6,
+              9
+            ],
+            "target": [
+              2,
+              4
+            ]
+          },
+          {
+            "id": "kitchen",
+            "name": "주방",
+            "bounds": [
+              8,
+              1,
+              13,
+              4
+            ],
+            "target": [
+              11,
+              3
+            ]
+          },
+          {
+            "id": "bedroom",
+            "name": "침실",
+            "bounds": [
+              8,
+              6,
+              13,
+              9
+            ],
+            "target": [
+              11,
+              8
+            ]
+          }
+        ],
+        "start": [
+          2,
+          4
+        ]
+      }
+    },
+    {
+      "run_id": "run_simulator_v2",
+      "scenario_day": 17,
+      "scenario": {
+        "rule_version": "pm25-v1.1",
+        "event_seed_version": "pm25-v1",
+        "partial_purification": "(1 - purification_rate) ** (seconds / 60)",
+        "seed": 100,
+        "day_index": 16,
+        "late_dinner": false,
+        "schedule_source": "generated",
+        "time_unit": "minute",
+        "pm25_unit": "µg/m³",
+        "initial_pm25": 10.0,
+        "natural_baseline": 10.0,
+        "natural_decay_rate": 0.01,
+        "purification_rate": 0.05,
+        "purification_floor": 5.0,
+        "activity_rates": {
+          "cooking": 3.0,
+          "cleaning": 2.0,
+          "bedding": 2.0
+        },
+        "events": [
+          {
+            "room": "bedroom",
+            "activity": "bedding",
+            "start_minute": 486,
+            "end_minute": 495
+          },
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 494,
+            "end_minute": 508
+          },
+          {
+            "room": "living_room",
+            "activity": "cleaning",
+            "start_minute": 860,
+            "end_minute": 869
+          },
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 1175,
+            "end_minute": 1189
+          }
+        ],
+        "tick_seconds": 10,
+        "measurement_interval_seconds": 600,
+        "purify_on": 35,
+        "purify_off": 15
+      },
+      "map": {
+        "width": 15,
+        "height": 11,
+        "grid": [
+          "###############",
+          "#......#......#",
+          "#..XX..#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "#..X...########",
+          "#..X...#......#",
+          "#......#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "###############"
+        ],
+        "legend": {
+          "#": "wall",
+          ".": "floor",
+          "X": "obstacle",
+          "D": "door"
+        },
+        "rooms": [
+          {
+            "id": "living_room",
+            "name": "거실",
+            "bounds": [
+              1,
+              1,
+              6,
+              9
+            ],
+            "target": [
+              2,
+              4
+            ]
+          },
+          {
+            "id": "kitchen",
+            "name": "주방",
+            "bounds": [
+              8,
+              1,
+              13,
+              4
+            ],
+            "target": [
+              11,
+              3
+            ]
+          },
+          {
+            "id": "bedroom",
+            "name": "침실",
+            "bounds": [
+              8,
+              6,
+              13,
+              9
+            ],
+            "target": [
+              11,
+              8
+            ]
+          }
+        ],
+        "start": [
+          2,
+          4
+        ]
+      }
+    },
+    {
+      "run_id": "run_simulator_v2",
+      "scenario_day": 18,
+      "scenario": {
+        "rule_version": "pm25-v1.1",
+        "event_seed_version": "pm25-v1",
+        "partial_purification": "(1 - purification_rate) ** (seconds / 60)",
+        "seed": 100,
+        "day_index": 17,
+        "late_dinner": false,
+        "schedule_source": "generated",
+        "time_unit": "minute",
+        "pm25_unit": "µg/m³",
+        "initial_pm25": 10.0,
+        "natural_baseline": 10.0,
+        "natural_decay_rate": 0.01,
+        "purification_rate": 0.05,
+        "purification_floor": 5.0,
+        "activity_rates": {
+          "cooking": 3.0,
+          "cleaning": 2.0,
+          "bedding": 2.0
+        },
+        "events": [
+          {
+            "room": "bedroom",
+            "activity": "bedding",
+            "start_minute": 458,
+            "end_minute": 464
+          },
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 472,
+            "end_minute": 488
+          },
+          {
+            "room": "living_room",
+            "activity": "cleaning",
+            "start_minute": 845,
+            "end_minute": 852
+          },
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 1086,
+            "end_minute": 1106
+          }
+        ],
+        "tick_seconds": 10,
+        "measurement_interval_seconds": 600,
+        "purify_on": 35,
+        "purify_off": 15
+      },
+      "map": {
+        "width": 15,
+        "height": 11,
+        "grid": [
+          "###############",
+          "#......#......#",
+          "#..XX..#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "#..X...########",
+          "#..X...#......#",
+          "#......#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "###############"
+        ],
+        "legend": {
+          "#": "wall",
+          ".": "floor",
+          "X": "obstacle",
+          "D": "door"
+        },
+        "rooms": [
+          {
+            "id": "living_room",
+            "name": "거실",
+            "bounds": [
+              1,
+              1,
+              6,
+              9
+            ],
+            "target": [
+              2,
+              4
+            ]
+          },
+          {
+            "id": "kitchen",
+            "name": "주방",
+            "bounds": [
+              8,
+              1,
+              13,
+              4
+            ],
+            "target": [
+              11,
+              3
+            ]
+          },
+          {
+            "id": "bedroom",
+            "name": "침실",
+            "bounds": [
+              8,
+              6,
+              13,
+              9
+            ],
+            "target": [
+              11,
+              8
+            ]
+          }
+        ],
+        "start": [
+          2,
+          4
+        ]
+      }
+    },
+    {
+      "run_id": "run_simulator_v2",
+      "scenario_day": 19,
+      "scenario": {
+        "rule_version": "pm25-v1.1",
+        "event_seed_version": "pm25-v1",
+        "partial_purification": "(1 - purification_rate) ** (seconds / 60)",
+        "seed": 100,
+        "day_index": 18,
+        "late_dinner": false,
+        "schedule_source": "generated",
+        "time_unit": "minute",
+        "pm25_unit": "µg/m³",
+        "initial_pm25": 10.0,
+        "natural_baseline": 10.0,
+        "natural_decay_rate": 0.01,
+        "purification_rate": 0.05,
+        "purification_floor": 5.0,
+        "activity_rates": {
+          "cooking": 3.0,
+          "cleaning": 2.0,
+          "bedding": 2.0
+        },
+        "events": [
+          {
+            "room": "bedroom",
+            "activity": "bedding",
+            "start_minute": 426,
+            "end_minute": 431
+          },
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 531,
+            "end_minute": 547
+          },
+          {
+            "room": "living_room",
+            "activity": "cleaning",
+            "start_minute": 994,
+            "end_minute": 999
+          },
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 1184,
+            "end_minute": 1203
+          }
+        ],
+        "tick_seconds": 10,
+        "measurement_interval_seconds": 600,
+        "purify_on": 35,
+        "purify_off": 15
+      },
+      "map": {
+        "width": 15,
+        "height": 11,
+        "grid": [
+          "###############",
+          "#......#......#",
+          "#..XX..#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "#..X...########",
+          "#..X...#......#",
+          "#......#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "###############"
+        ],
+        "legend": {
+          "#": "wall",
+          ".": "floor",
+          "X": "obstacle",
+          "D": "door"
+        },
+        "rooms": [
+          {
+            "id": "living_room",
+            "name": "거실",
+            "bounds": [
+              1,
+              1,
+              6,
+              9
+            ],
+            "target": [
+              2,
+              4
+            ]
+          },
+          {
+            "id": "kitchen",
+            "name": "주방",
+            "bounds": [
+              8,
+              1,
+              13,
+              4
+            ],
+            "target": [
+              11,
+              3
+            ]
+          },
+          {
+            "id": "bedroom",
+            "name": "침실",
+            "bounds": [
+              8,
+              6,
+              13,
+              9
+            ],
+            "target": [
+              11,
+              8
+            ]
+          }
+        ],
+        "start": [
+          2,
+          4
+        ]
+      }
+    },
+    {
+      "run_id": "run_simulator_v2",
+      "scenario_day": 20,
+      "scenario": {
+        "rule_version": "pm25-v1.1",
+        "event_seed_version": "pm25-v1",
+        "partial_purification": "(1 - purification_rate) ** (seconds / 60)",
+        "seed": 100,
+        "day_index": 19,
+        "late_dinner": false,
+        "schedule_source": "generated",
+        "time_unit": "minute",
+        "pm25_unit": "µg/m³",
+        "initial_pm25": 10.0,
+        "natural_baseline": 10.0,
+        "natural_decay_rate": 0.01,
+        "purification_rate": 0.05,
+        "purification_floor": 5.0,
+        "activity_rates": {
+          "cooking": 3.0,
+          "cleaning": 2.0,
+          "bedding": 2.0
+        },
+        "events": [
+          {
+            "room": "bedroom",
+            "activity": "bedding",
+            "start_minute": 452,
+            "end_minute": 457
+          },
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 469,
+            "end_minute": 481
+          },
+          {
+            "room": "living_room",
+            "activity": "cleaning",
+            "start_minute": 935,
+            "end_minute": 940
+          },
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 1171,
+            "end_minute": 1186
+          }
+        ],
+        "tick_seconds": 10,
+        "measurement_interval_seconds": 600,
+        "purify_on": 35,
+        "purify_off": 15
+      },
+      "map": {
+        "width": 15,
+        "height": 11,
+        "grid": [
+          "###############",
+          "#......#......#",
+          "#..XX..#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "#..X...########",
+          "#..X...#......#",
+          "#......#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "###############"
+        ],
+        "legend": {
+          "#": "wall",
+          ".": "floor",
+          "X": "obstacle",
+          "D": "door"
+        },
+        "rooms": [
+          {
+            "id": "living_room",
+            "name": "거실",
+            "bounds": [
+              1,
+              1,
+              6,
+              9
+            ],
+            "target": [
+              2,
+              4
+            ]
+          },
+          {
+            "id": "kitchen",
+            "name": "주방",
+            "bounds": [
+              8,
+              1,
+              13,
+              4
+            ],
+            "target": [
+              11,
+              3
+            ]
+          },
+          {
+            "id": "bedroom",
+            "name": "침실",
+            "bounds": [
+              8,
+              6,
+              13,
+              9
+            ],
+            "target": [
+              11,
+              8
+            ]
+          }
+        ],
+        "start": [
+          2,
+          4
+        ]
+      }
+    },
+    {
+      "run_id": "run_simulator_v2",
+      "scenario_day": 21,
+      "scenario": {
+        "rule_version": "pm25-v1.1",
+        "event_seed_version": "pm25-v1",
+        "partial_purification": "(1 - purification_rate) ** (seconds / 60)",
+        "seed": 100,
+        "day_index": 20,
+        "late_dinner": false,
+        "schedule_source": "generated",
+        "time_unit": "minute",
+        "pm25_unit": "µg/m³",
+        "initial_pm25": 10.0,
+        "natural_baseline": 10.0,
+        "natural_decay_rate": 0.01,
+        "purification_rate": 0.05,
+        "purification_floor": 5.0,
+        "activity_rates": {
+          "cooking": 3.0,
+          "cleaning": 2.0,
+          "bedding": 2.0
+        },
+        "events": [
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 496,
+            "end_minute": 514
+          },
+          {
+            "room": "bedroom",
+            "activity": "bedding",
+            "start_minute": 574,
+            "end_minute": 584
+          },
+          {
+            "room": "living_room",
+            "activity": "cleaning",
+            "start_minute": 931,
+            "end_minute": 936
+          },
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 1094,
+            "end_minute": 1105
+          }
+        ],
+        "tick_seconds": 10,
+        "measurement_interval_seconds": 600,
+        "purify_on": 35,
+        "purify_off": 15
+      },
+      "map": {
+        "width": 15,
+        "height": 11,
+        "grid": [
+          "###############",
+          "#......#......#",
+          "#..XX..#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "#..X...########",
+          "#..X...#......#",
+          "#......#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "###############"
+        ],
+        "legend": {
+          "#": "wall",
+          ".": "floor",
+          "X": "obstacle",
+          "D": "door"
+        },
+        "rooms": [
+          {
+            "id": "living_room",
+            "name": "거실",
+            "bounds": [
+              1,
+              1,
+              6,
+              9
+            ],
+            "target": [
+              2,
+              4
+            ]
+          },
+          {
+            "id": "kitchen",
+            "name": "주방",
+            "bounds": [
+              8,
+              1,
+              13,
+              4
+            ],
+            "target": [
+              11,
+              3
+            ]
+          },
+          {
+            "id": "bedroom",
+            "name": "침실",
+            "bounds": [
+              8,
+              6,
+              13,
+              9
+            ],
+            "target": [
+              11,
+              8
+            ]
+          }
+        ],
+        "start": [
+          2,
+          4
+        ]
+      }
+    },
+    {
+      "run_id": "run_simulator_v2",
+      "scenario_day": 22,
+      "scenario": {
+        "rule_version": "pm25-v1.1",
+        "event_seed_version": "pm25-v1",
+        "partial_purification": "(1 - purification_rate) ** (seconds / 60)",
+        "seed": 100,
+        "day_index": 21,
+        "late_dinner": false,
+        "schedule_source": "generated",
+        "time_unit": "minute",
+        "pm25_unit": "µg/m³",
+        "initial_pm25": 10.0,
+        "natural_baseline": 10.0,
+        "natural_decay_rate": 0.01,
+        "purification_rate": 0.05,
+        "purification_floor": 5.0,
+        "activity_rates": {
+          "cooking": 3.0,
+          "cleaning": 2.0,
+          "bedding": 2.0
+        },
+        "events": [
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 466,
+            "end_minute": 484
+          },
+          {
+            "room": "bedroom",
+            "activity": "bedding",
+            "start_minute": 511,
+            "end_minute": 518
+          },
+          {
+            "room": "living_room",
+            "activity": "cleaning",
+            "start_minute": 940,
+            "end_minute": 949
+          },
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 1153,
+            "end_minute": 1172
+          }
+        ],
+        "tick_seconds": 10,
+        "measurement_interval_seconds": 600,
+        "purify_on": 35,
+        "purify_off": 15
+      },
+      "map": {
+        "width": 15,
+        "height": 11,
+        "grid": [
+          "###############",
+          "#......#......#",
+          "#..XX..#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "#..X...########",
+          "#..X...#......#",
+          "#......#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "###############"
+        ],
+        "legend": {
+          "#": "wall",
+          ".": "floor",
+          "X": "obstacle",
+          "D": "door"
+        },
+        "rooms": [
+          {
+            "id": "living_room",
+            "name": "거실",
+            "bounds": [
+              1,
+              1,
+              6,
+              9
+            ],
+            "target": [
+              2,
+              4
+            ]
+          },
+          {
+            "id": "kitchen",
+            "name": "주방",
+            "bounds": [
+              8,
+              1,
+              13,
+              4
+            ],
+            "target": [
+              11,
+              3
+            ]
+          },
+          {
+            "id": "bedroom",
+            "name": "침실",
+            "bounds": [
+              8,
+              6,
+              13,
+              9
+            ],
+            "target": [
+              11,
+              8
+            ]
+          }
+        ],
+        "start": [
+          2,
+          4
+        ]
+      }
+    },
+    {
+      "run_id": "run_simulator_v2",
+      "scenario_day": 23,
+      "scenario": {
+        "rule_version": "pm25-v1.1",
+        "event_seed_version": "pm25-v1",
+        "partial_purification": "(1 - purification_rate) ** (seconds / 60)",
+        "seed": 100,
+        "day_index": 22,
+        "late_dinner": false,
+        "schedule_source": "generated",
+        "time_unit": "minute",
+        "pm25_unit": "µg/m³",
+        "initial_pm25": 10.0,
+        "natural_baseline": 10.0,
+        "natural_decay_rate": 0.01,
+        "purification_rate": 0.05,
+        "purification_floor": 5.0,
+        "activity_rates": {
+          "cooking": 3.0,
+          "cleaning": 2.0,
+          "bedding": 2.0
+        },
+        "events": [
+          {
+            "room": "bedroom",
+            "activity": "bedding",
+            "start_minute": 484,
+            "end_minute": 493
+          },
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 494,
+            "end_minute": 508
+          },
+          {
+            "room": "living_room",
+            "activity": "cleaning",
+            "start_minute": 827,
+            "end_minute": 837
+          },
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 1157,
+            "end_minute": 1171
+          }
+        ],
+        "tick_seconds": 10,
+        "measurement_interval_seconds": 600,
+        "purify_on": 35,
+        "purify_off": 15
+      },
+      "map": {
+        "width": 15,
+        "height": 11,
+        "grid": [
+          "###############",
+          "#......#......#",
+          "#..XX..#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "#..X...########",
+          "#..X...#......#",
+          "#......#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "###############"
+        ],
+        "legend": {
+          "#": "wall",
+          ".": "floor",
+          "X": "obstacle",
+          "D": "door"
+        },
+        "rooms": [
+          {
+            "id": "living_room",
+            "name": "거실",
+            "bounds": [
+              1,
+              1,
+              6,
+              9
+            ],
+            "target": [
+              2,
+              4
+            ]
+          },
+          {
+            "id": "kitchen",
+            "name": "주방",
+            "bounds": [
+              8,
+              1,
+              13,
+              4
+            ],
+            "target": [
+              11,
+              3
+            ]
+          },
+          {
+            "id": "bedroom",
+            "name": "침실",
+            "bounds": [
+              8,
+              6,
+              13,
+              9
+            ],
+            "target": [
+              11,
+              8
+            ]
+          }
+        ],
+        "start": [
+          2,
+          4
+        ]
+      }
+    },
+    {
+      "run_id": "run_simulator_v2",
+      "scenario_day": 24,
+      "scenario": {
+        "rule_version": "pm25-v1.1",
+        "event_seed_version": "pm25-v1",
+        "partial_purification": "(1 - purification_rate) ** (seconds / 60)",
+        "seed": 100,
+        "day_index": 23,
+        "late_dinner": false,
+        "schedule_source": "generated",
+        "time_unit": "minute",
+        "pm25_unit": "µg/m³",
+        "initial_pm25": 10.0,
+        "natural_baseline": 10.0,
+        "natural_decay_rate": 0.01,
+        "purification_rate": 0.05,
+        "purification_floor": 5.0,
+        "activity_rates": {
+          "cooking": 3.0,
+          "cleaning": 2.0,
+          "bedding": 2.0
+        },
+        "events": [
+          {
+            "room": "bedroom",
+            "activity": "bedding",
+            "start_minute": 514,
+            "end_minute": 524
+          },
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 533,
+            "end_minute": 550
+          },
+          {
+            "room": "living_room",
+            "activity": "cleaning",
+            "start_minute": 948,
+            "end_minute": 958
+          },
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 1176,
+            "end_minute": 1188
+          }
+        ],
+        "tick_seconds": 10,
+        "measurement_interval_seconds": 600,
+        "purify_on": 35,
+        "purify_off": 15
+      },
+      "map": {
+        "width": 15,
+        "height": 11,
+        "grid": [
+          "###############",
+          "#......#......#",
+          "#..XX..#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "#..X...########",
+          "#..X...#......#",
+          "#......#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "###############"
+        ],
+        "legend": {
+          "#": "wall",
+          ".": "floor",
+          "X": "obstacle",
+          "D": "door"
+        },
+        "rooms": [
+          {
+            "id": "living_room",
+            "name": "거실",
+            "bounds": [
+              1,
+              1,
+              6,
+              9
+            ],
+            "target": [
+              2,
+              4
+            ]
+          },
+          {
+            "id": "kitchen",
+            "name": "주방",
+            "bounds": [
+              8,
+              1,
+              13,
+              4
+            ],
+            "target": [
+              11,
+              3
+            ]
+          },
+          {
+            "id": "bedroom",
+            "name": "침실",
+            "bounds": [
+              8,
+              6,
+              13,
+              9
+            ],
+            "target": [
+              11,
+              8
+            ]
+          }
+        ],
+        "start": [
+          2,
+          4
+        ]
+      }
+    },
+    {
+      "run_id": "run_simulator_v2",
+      "scenario_day": 25,
+      "scenario": {
+        "rule_version": "pm25-v1.1",
+        "event_seed_version": "pm25-v1",
+        "partial_purification": "(1 - purification_rate) ** (seconds / 60)",
+        "seed": 100,
+        "day_index": 24,
+        "late_dinner": false,
+        "schedule_source": "generated",
+        "time_unit": "minute",
+        "pm25_unit": "µg/m³",
+        "initial_pm25": 10.0,
+        "natural_baseline": 10.0,
+        "natural_decay_rate": 0.01,
+        "purification_rate": 0.05,
+        "purification_floor": 5.0,
+        "activity_rates": {
+          "cooking": 3.0,
+          "cleaning": 2.0,
+          "bedding": 2.0
+        },
+        "events": [
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 502,
+            "end_minute": 513
+          },
+          {
+            "room": "bedroom",
+            "activity": "bedding",
+            "start_minute": 523,
+            "end_minute": 531
+          },
+          {
+            "room": "living_room",
+            "activity": "cleaning",
+            "start_minute": 1020,
+            "end_minute": 1030
+          },
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 1113,
+            "end_minute": 1132
+          }
+        ],
+        "tick_seconds": 10,
+        "measurement_interval_seconds": 600,
+        "purify_on": 35,
+        "purify_off": 15
+      },
+      "map": {
+        "width": 15,
+        "height": 11,
+        "grid": [
+          "###############",
+          "#......#......#",
+          "#..XX..#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "#..X...########",
+          "#..X...#......#",
+          "#......#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "###############"
+        ],
+        "legend": {
+          "#": "wall",
+          ".": "floor",
+          "X": "obstacle",
+          "D": "door"
+        },
+        "rooms": [
+          {
+            "id": "living_room",
+            "name": "거실",
+            "bounds": [
+              1,
+              1,
+              6,
+              9
+            ],
+            "target": [
+              2,
+              4
+            ]
+          },
+          {
+            "id": "kitchen",
+            "name": "주방",
+            "bounds": [
+              8,
+              1,
+              13,
+              4
+            ],
+            "target": [
+              11,
+              3
+            ]
+          },
+          {
+            "id": "bedroom",
+            "name": "침실",
+            "bounds": [
+              8,
+              6,
+              13,
+              9
+            ],
+            "target": [
+              11,
+              8
+            ]
+          }
+        ],
+        "start": [
+          2,
+          4
+        ]
+      }
+    },
+    {
+      "run_id": "run_simulator_v2",
+      "scenario_day": 26,
+      "scenario": {
+        "rule_version": "pm25-v1.1",
+        "event_seed_version": "pm25-v1",
+        "partial_purification": "(1 - purification_rate) ** (seconds / 60)",
+        "seed": 100,
+        "day_index": 25,
+        "late_dinner": false,
+        "schedule_source": "generated",
+        "time_unit": "minute",
+        "pm25_unit": "µg/m³",
+        "initial_pm25": 10.0,
+        "natural_baseline": 10.0,
+        "natural_decay_rate": 0.01,
+        "purification_rate": 0.05,
+        "purification_floor": 5.0,
+        "activity_rates": {
+          "cooking": 3.0,
+          "cleaning": 2.0,
+          "bedding": 2.0
+        },
+        "events": [
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 476,
+            "end_minute": 491
+          },
+          {
+            "room": "bedroom",
+            "activity": "bedding",
+            "start_minute": 600,
+            "end_minute": 608
+          },
+          {
+            "room": "living_room",
+            "activity": "cleaning",
+            "start_minute": 902,
+            "end_minute": 907
+          },
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 1138,
+            "end_minute": 1157
+          }
+        ],
+        "tick_seconds": 10,
+        "measurement_interval_seconds": 600,
+        "purify_on": 35,
+        "purify_off": 15
+      },
+      "map": {
+        "width": 15,
+        "height": 11,
+        "grid": [
+          "###############",
+          "#......#......#",
+          "#..XX..#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "#..X...########",
+          "#..X...#......#",
+          "#......#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "###############"
+        ],
+        "legend": {
+          "#": "wall",
+          ".": "floor",
+          "X": "obstacle",
+          "D": "door"
+        },
+        "rooms": [
+          {
+            "id": "living_room",
+            "name": "거실",
+            "bounds": [
+              1,
+              1,
+              6,
+              9
+            ],
+            "target": [
+              2,
+              4
+            ]
+          },
+          {
+            "id": "kitchen",
+            "name": "주방",
+            "bounds": [
+              8,
+              1,
+              13,
+              4
+            ],
+            "target": [
+              11,
+              3
+            ]
+          },
+          {
+            "id": "bedroom",
+            "name": "침실",
+            "bounds": [
+              8,
+              6,
+              13,
+              9
+            ],
+            "target": [
+              11,
+              8
+            ]
+          }
+        ],
+        "start": [
+          2,
+          4
+        ]
+      }
+    },
+    {
+      "run_id": "run_simulator_v2",
+      "scenario_day": 27,
+      "scenario": {
+        "rule_version": "pm25-v1.1",
+        "event_seed_version": "pm25-v1",
+        "partial_purification": "(1 - purification_rate) ** (seconds / 60)",
+        "seed": 100,
+        "day_index": 26,
+        "late_dinner": false,
+        "schedule_source": "generated",
+        "time_unit": "minute",
+        "pm25_unit": "µg/m³",
+        "initial_pm25": 10.0,
+        "natural_baseline": 10.0,
+        "natural_decay_rate": 0.01,
+        "purification_rate": 0.05,
+        "purification_floor": 5.0,
+        "activity_rates": {
+          "cooking": 3.0,
+          "cleaning": 2.0,
+          "bedding": 2.0
+        },
+        "events": [
+          {
+            "room": "bedroom",
+            "activity": "bedding",
+            "start_minute": 475,
+            "end_minute": 484
+          },
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 521,
+            "end_minute": 540
+          },
+          {
+            "room": "living_room",
+            "activity": "cleaning",
+            "start_minute": 825,
+            "end_minute": 830
+          },
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 1138,
+            "end_minute": 1158
+          }
+        ],
+        "tick_seconds": 10,
+        "measurement_interval_seconds": 600,
+        "purify_on": 35,
+        "purify_off": 15
+      },
+      "map": {
+        "width": 15,
+        "height": 11,
+        "grid": [
+          "###############",
+          "#......#......#",
+          "#..XX..#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "#..X...########",
+          "#..X...#......#",
+          "#......#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "###############"
+        ],
+        "legend": {
+          "#": "wall",
+          ".": "floor",
+          "X": "obstacle",
+          "D": "door"
+        },
+        "rooms": [
+          {
+            "id": "living_room",
+            "name": "거실",
+            "bounds": [
+              1,
+              1,
+              6,
+              9
+            ],
+            "target": [
+              2,
+              4
+            ]
+          },
+          {
+            "id": "kitchen",
+            "name": "주방",
+            "bounds": [
+              8,
+              1,
+              13,
+              4
+            ],
+            "target": [
+              11,
+              3
+            ]
+          },
+          {
+            "id": "bedroom",
+            "name": "침실",
+            "bounds": [
+              8,
+              6,
+              13,
+              9
+            ],
+            "target": [
+              11,
+              8
+            ]
+          }
+        ],
+        "start": [
+          2,
+          4
+        ]
+      }
+    },
+    {
+      "run_id": "run_simulator_v2",
+      "scenario_day": 28,
+      "scenario": {
+        "rule_version": "pm25-v1.1",
+        "event_seed_version": "pm25-v1",
+        "partial_purification": "(1 - purification_rate) ** (seconds / 60)",
+        "seed": 100,
+        "day_index": 27,
+        "late_dinner": false,
+        "schedule_source": "generated",
+        "time_unit": "minute",
+        "pm25_unit": "µg/m³",
+        "initial_pm25": 10.0,
+        "natural_baseline": 10.0,
+        "natural_decay_rate": 0.01,
+        "purification_rate": 0.05,
+        "purification_floor": 5.0,
+        "activity_rates": {
+          "cooking": 3.0,
+          "cleaning": 2.0,
+          "bedding": 2.0
+        },
+        "events": [
+          {
+            "room": "bedroom",
+            "activity": "bedding",
+            "start_minute": 434,
+            "end_minute": 441
+          },
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 440,
+            "end_minute": 455
+          },
+          {
+            "room": "living_room",
+            "activity": "cleaning",
+            "start_minute": 798,
+            "end_minute": 803
+          },
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 1137,
+            "end_minute": 1152
+          }
+        ],
+        "tick_seconds": 10,
+        "measurement_interval_seconds": 600,
+        "purify_on": 35,
+        "purify_off": 15
+      },
+      "map": {
+        "width": 15,
+        "height": 11,
+        "grid": [
+          "###############",
+          "#......#......#",
+          "#..XX..#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "#..X...########",
+          "#..X...#......#",
+          "#......#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "###############"
+        ],
+        "legend": {
+          "#": "wall",
+          ".": "floor",
+          "X": "obstacle",
+          "D": "door"
+        },
+        "rooms": [
+          {
+            "id": "living_room",
+            "name": "거실",
+            "bounds": [
+              1,
+              1,
+              6,
+              9
+            ],
+            "target": [
+              2,
+              4
+            ]
+          },
+          {
+            "id": "kitchen",
+            "name": "주방",
+            "bounds": [
+              8,
+              1,
+              13,
+              4
+            ],
+            "target": [
+              11,
+              3
+            ]
+          },
+          {
+            "id": "bedroom",
+            "name": "침실",
+            "bounds": [
+              8,
+              6,
+              13,
+              9
+            ],
+            "target": [
+              11,
+              8
+            ]
+          }
+        ],
+        "start": [
+          2,
+          4
+        ]
+      }
+    },
+    {
+      "run_id": "run_simulator_v2",
+      "scenario_day": 29,
+      "scenario": {
+        "rule_version": "pm25-v1.1",
+        "event_seed_version": "pm25-v1",
+        "partial_purification": "(1 - purification_rate) ** (seconds / 60)",
+        "seed": 100,
+        "day_index": 28,
+        "late_dinner": false,
+        "schedule_source": "generated",
+        "time_unit": "minute",
+        "pm25_unit": "µg/m³",
+        "initial_pm25": 10.0,
+        "natural_baseline": 10.0,
+        "natural_decay_rate": 0.01,
+        "purification_rate": 0.05,
+        "purification_floor": 5.0,
+        "activity_rates": {
+          "cooking": 3.0,
+          "cleaning": 2.0,
+          "bedding": 2.0
+        },
+        "events": [
+          {
+            "room": "bedroom",
+            "activity": "bedding",
+            "start_minute": 426,
+            "end_minute": 435
+          },
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 498,
+            "end_minute": 509
+          },
+          {
+            "room": "living_room",
+            "activity": "cleaning",
+            "start_minute": 874,
+            "end_minute": 882
+          },
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 1119,
+            "end_minute": 1134
+          }
+        ],
+        "tick_seconds": 10,
+        "measurement_interval_seconds": 600,
+        "purify_on": 35,
+        "purify_off": 15
+      },
+      "map": {
+        "width": 15,
+        "height": 11,
+        "grid": [
+          "###############",
+          "#......#......#",
+          "#..XX..#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "#..X...########",
+          "#..X...#......#",
+          "#......#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "###############"
+        ],
+        "legend": {
+          "#": "wall",
+          ".": "floor",
+          "X": "obstacle",
+          "D": "door"
+        },
+        "rooms": [
+          {
+            "id": "living_room",
+            "name": "거실",
+            "bounds": [
+              1,
+              1,
+              6,
+              9
+            ],
+            "target": [
+              2,
+              4
+            ]
+          },
+          {
+            "id": "kitchen",
+            "name": "주방",
+            "bounds": [
+              8,
+              1,
+              13,
+              4
+            ],
+            "target": [
+              11,
+              3
+            ]
+          },
+          {
+            "id": "bedroom",
+            "name": "침실",
+            "bounds": [
+              8,
+              6,
+              13,
+              9
+            ],
+            "target": [
+              11,
+              8
+            ]
+          }
+        ],
+        "start": [
+          2,
+          4
+        ]
+      }
+    },
+    {
+      "run_id": "run_simulator_v2",
+      "scenario_day": 30,
+      "scenario": {
+        "rule_version": "pm25-v1.1",
+        "event_seed_version": "pm25-v1",
+        "partial_purification": "(1 - purification_rate) ** (seconds / 60)",
+        "seed": 100,
+        "day_index": 29,
+        "late_dinner": false,
+        "schedule_source": "generated",
+        "time_unit": "minute",
+        "pm25_unit": "µg/m³",
+        "initial_pm25": 10.0,
+        "natural_baseline": 10.0,
+        "natural_decay_rate": 0.01,
+        "purification_rate": 0.05,
+        "purification_floor": 5.0,
+        "activity_rates": {
+          "cooking": 3.0,
+          "cleaning": 2.0,
+          "bedding": 2.0
+        },
+        "events": [
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 458,
+            "end_minute": 474
+          },
+          {
+            "room": "bedroom",
+            "activity": "bedding",
+            "start_minute": 583,
+            "end_minute": 592
+          },
+          {
+            "room": "living_room",
+            "activity": "cleaning",
+            "start_minute": 964,
+            "end_minute": 973
+          },
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 1167,
+            "end_minute": 1187
+          }
+        ],
+        "tick_seconds": 10,
+        "measurement_interval_seconds": 600,
+        "purify_on": 35,
+        "purify_off": 15
+      },
+      "map": {
+        "width": 15,
+        "height": 11,
+        "grid": [
+          "###############",
+          "#......#......#",
+          "#..XX..#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "#..X...########",
+          "#..X...#......#",
+          "#......#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "###############"
+        ],
+        "legend": {
+          "#": "wall",
+          ".": "floor",
+          "X": "obstacle",
+          "D": "door"
+        },
+        "rooms": [
+          {
+            "id": "living_room",
+            "name": "거실",
+            "bounds": [
+              1,
+              1,
+              6,
+              9
+            ],
+            "target": [
+              2,
+              4
+            ]
+          },
+          {
+            "id": "kitchen",
+            "name": "주방",
+            "bounds": [
+              8,
+              1,
+              13,
+              4
+            ],
+            "target": [
+              11,
+              3
+            ]
+          },
+          {
+            "id": "bedroom",
+            "name": "침실",
+            "bounds": [
+              8,
+              6,
+              13,
+              9
+            ],
+            "target": [
+              11,
+              8
+            ]
+          }
+        ],
+        "start": [
+          2,
+          4
+        ]
+      }
+    },
+    {
+      "run_id": "run_simulator_v2",
+      "scenario_day": 31,
+      "scenario": {
+        "rule_version": "pm25-v1.1",
+        "event_seed_version": "pm25-v1",
+        "partial_purification": "(1 - purification_rate) ** (seconds / 60)",
+        "seed": 100,
+        "day_index": 30,
+        "late_dinner": false,
+        "schedule_source": "generated",
+        "time_unit": "minute",
+        "pm25_unit": "µg/m³",
+        "initial_pm25": 10.0,
+        "natural_baseline": 10.0,
+        "natural_decay_rate": 0.01,
+        "purification_rate": 0.05,
+        "purification_floor": 5.0,
+        "activity_rates": {
+          "cooking": 3.0,
+          "cleaning": 2.0,
+          "bedding": 2.0
+        },
+        "events": [
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 429,
+            "end_minute": 446
+          },
+          {
+            "room": "bedroom",
+            "activity": "bedding",
+            "start_minute": 568,
+            "end_minute": 575
+          },
+          {
+            "room": "living_room",
+            "activity": "cleaning",
+            "start_minute": 879,
+            "end_minute": 884
+          },
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 1083,
+            "end_minute": 1093
+          }
+        ],
+        "tick_seconds": 10,
+        "measurement_interval_seconds": 600,
+        "purify_on": 35,
+        "purify_off": 15
+      },
+      "map": {
+        "width": 15,
+        "height": 11,
+        "grid": [
+          "###############",
+          "#......#......#",
+          "#..XX..#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "#..X...########",
+          "#..X...#......#",
+          "#......#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "###############"
+        ],
+        "legend": {
+          "#": "wall",
+          ".": "floor",
+          "X": "obstacle",
+          "D": "door"
+        },
+        "rooms": [
+          {
+            "id": "living_room",
+            "name": "거실",
+            "bounds": [
+              1,
+              1,
+              6,
+              9
+            ],
+            "target": [
+              2,
+              4
+            ]
+          },
+          {
+            "id": "kitchen",
+            "name": "주방",
+            "bounds": [
+              8,
+              1,
+              13,
+              4
+            ],
+            "target": [
+              11,
+              3
+            ]
+          },
+          {
+            "id": "bedroom",
+            "name": "침실",
+            "bounds": [
+              8,
+              6,
+              13,
+              9
+            ],
+            "target": [
+              11,
+              8
+            ]
+          }
+        ],
+        "start": [
+          2,
+          4
+        ]
+      }
+    },
+    {
+      "run_id": "run_simulator_v2",
+      "scenario_day": 32,
+      "scenario": {
+        "rule_version": "pm25-v1.1",
+        "event_seed_version": "pm25-v1",
+        "partial_purification": "(1 - purification_rate) ** (seconds / 60)",
+        "seed": 100,
+        "day_index": 31,
+        "late_dinner": false,
+        "schedule_source": "generated",
+        "time_unit": "minute",
+        "pm25_unit": "µg/m³",
+        "initial_pm25": 10.0,
+        "natural_baseline": 10.0,
+        "natural_decay_rate": 0.01,
+        "purification_rate": 0.05,
+        "purification_floor": 5.0,
+        "activity_rates": {
+          "cooking": 3.0,
+          "cleaning": 2.0,
+          "bedding": 2.0
+        },
+        "events": [
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 516,
+            "end_minute": 529
+          },
+          {
+            "room": "bedroom",
+            "activity": "bedding",
+            "start_minute": 548,
+            "end_minute": 556
+          },
+          {
+            "room": "living_room",
+            "activity": "cleaning",
+            "start_minute": 999,
+            "end_minute": 1005
+          },
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 1153,
+            "end_minute": 1173
+          }
+        ],
+        "tick_seconds": 10,
+        "measurement_interval_seconds": 600,
+        "purify_on": 35,
+        "purify_off": 15
+      },
+      "map": {
+        "width": 15,
+        "height": 11,
+        "grid": [
+          "###############",
+          "#......#......#",
+          "#..XX..#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "#..X...########",
+          "#..X...#......#",
+          "#......#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "###############"
+        ],
+        "legend": {
+          "#": "wall",
+          ".": "floor",
+          "X": "obstacle",
+          "D": "door"
+        },
+        "rooms": [
+          {
+            "id": "living_room",
+            "name": "거실",
+            "bounds": [
+              1,
+              1,
+              6,
+              9
+            ],
+            "target": [
+              2,
+              4
+            ]
+          },
+          {
+            "id": "kitchen",
+            "name": "주방",
+            "bounds": [
+              8,
+              1,
+              13,
+              4
+            ],
+            "target": [
+              11,
+              3
+            ]
+          },
+          {
+            "id": "bedroom",
+            "name": "침실",
+            "bounds": [
+              8,
+              6,
+              13,
+              9
+            ],
+            "target": [
+              11,
+              8
+            ]
+          }
+        ],
+        "start": [
+          2,
+          4
+        ]
+      }
+    },
+    {
+      "run_id": "run_simulator_v2",
+      "scenario_day": 33,
+      "scenario": {
+        "rule_version": "pm25-v1.1",
+        "event_seed_version": "pm25-v1",
+        "partial_purification": "(1 - purification_rate) ** (seconds / 60)",
+        "seed": 100,
+        "day_index": 32,
+        "late_dinner": false,
+        "schedule_source": "generated",
+        "time_unit": "minute",
+        "pm25_unit": "µg/m³",
+        "initial_pm25": 10.0,
+        "natural_baseline": 10.0,
+        "natural_decay_rate": 0.01,
+        "purification_rate": 0.05,
+        "purification_floor": 5.0,
+        "activity_rates": {
+          "cooking": 3.0,
+          "cleaning": 2.0,
+          "bedding": 2.0
+        },
+        "events": [
+          {
+            "room": "bedroom",
+            "activity": "bedding",
+            "start_minute": 423,
+            "end_minute": 433
+          },
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 480,
+            "end_minute": 494
+          },
+          {
+            "room": "living_room",
+            "activity": "cleaning",
+            "start_minute": 954,
+            "end_minute": 959
+          },
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 1171,
+            "end_minute": 1186
+          }
+        ],
+        "tick_seconds": 10,
+        "measurement_interval_seconds": 600,
+        "purify_on": 35,
+        "purify_off": 15
+      },
+      "map": {
+        "width": 15,
+        "height": 11,
+        "grid": [
+          "###############",
+          "#......#......#",
+          "#..XX..#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "#..X...########",
+          "#..X...#......#",
+          "#......#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "###############"
+        ],
+        "legend": {
+          "#": "wall",
+          ".": "floor",
+          "X": "obstacle",
+          "D": "door"
+        },
+        "rooms": [
+          {
+            "id": "living_room",
+            "name": "거실",
+            "bounds": [
+              1,
+              1,
+              6,
+              9
+            ],
+            "target": [
+              2,
+              4
+            ]
+          },
+          {
+            "id": "kitchen",
+            "name": "주방",
+            "bounds": [
+              8,
+              1,
+              13,
+              4
+            ],
+            "target": [
+              11,
+              3
+            ]
+          },
+          {
+            "id": "bedroom",
+            "name": "침실",
+            "bounds": [
+              8,
+              6,
+              13,
+              9
+            ],
+            "target": [
+              11,
+              8
+            ]
+          }
+        ],
+        "start": [
+          2,
+          4
+        ]
+      }
+    },
+    {
+      "run_id": "run_simulator_v2",
+      "scenario_day": 34,
+      "scenario": {
+        "rule_version": "pm25-v1.1",
+        "event_seed_version": "pm25-v1",
+        "partial_purification": "(1 - purification_rate) ** (seconds / 60)",
+        "seed": 100,
+        "day_index": 33,
+        "late_dinner": false,
+        "schedule_source": "generated",
+        "time_unit": "minute",
+        "pm25_unit": "µg/m³",
+        "initial_pm25": 10.0,
+        "natural_baseline": 10.0,
+        "natural_decay_rate": 0.01,
+        "purification_rate": 0.05,
+        "purification_floor": 5.0,
+        "activity_rates": {
+          "cooking": 3.0,
+          "cleaning": 2.0,
+          "bedding": 2.0
+        },
+        "events": [
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 523,
+            "end_minute": 533
+          },
+          {
+            "room": "bedroom",
+            "activity": "bedding",
+            "start_minute": 569,
+            "end_minute": 574
+          },
+          {
+            "room": "living_room",
+            "activity": "cleaning",
+            "start_minute": 914,
+            "end_minute": 919
+          },
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 1189,
+            "end_minute": 1200
+          }
+        ],
+        "tick_seconds": 10,
+        "measurement_interval_seconds": 600,
+        "purify_on": 35,
+        "purify_off": 15
+      },
+      "map": {
+        "width": 15,
+        "height": 11,
+        "grid": [
+          "###############",
+          "#......#......#",
+          "#..XX..#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "#..X...########",
+          "#..X...#......#",
+          "#......#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "###############"
+        ],
+        "legend": {
+          "#": "wall",
+          ".": "floor",
+          "X": "obstacle",
+          "D": "door"
+        },
+        "rooms": [
+          {
+            "id": "living_room",
+            "name": "거실",
+            "bounds": [
+              1,
+              1,
+              6,
+              9
+            ],
+            "target": [
+              2,
+              4
+            ]
+          },
+          {
+            "id": "kitchen",
+            "name": "주방",
+            "bounds": [
+              8,
+              1,
+              13,
+              4
+            ],
+            "target": [
+              11,
+              3
+            ]
+          },
+          {
+            "id": "bedroom",
+            "name": "침실",
+            "bounds": [
+              8,
+              6,
+              13,
+              9
+            ],
+            "target": [
+              11,
+              8
+            ]
+          }
+        ],
+        "start": [
+          2,
+          4
+        ]
+      }
+    },
+    {
+      "run_id": "run_simulator_v2",
+      "scenario_day": 35,
+      "scenario": {
+        "rule_version": "pm25-v1.1",
+        "event_seed_version": "pm25-v1",
+        "partial_purification": "(1 - purification_rate) ** (seconds / 60)",
+        "seed": 100,
+        "day_index": 34,
+        "late_dinner": false,
+        "schedule_source": "generated",
+        "time_unit": "minute",
+        "pm25_unit": "µg/m³",
+        "initial_pm25": 10.0,
+        "natural_baseline": 10.0,
+        "natural_decay_rate": 0.01,
+        "purification_rate": 0.05,
+        "purification_floor": 5.0,
+        "activity_rates": {
+          "cooking": 3.0,
+          "cleaning": 2.0,
+          "bedding": 2.0
+        },
+        "events": [
+          {
+            "room": "bedroom",
+            "activity": "bedding",
+            "start_minute": 469,
+            "end_minute": 475
+          },
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 480,
+            "end_minute": 497
+          },
+          {
+            "room": "living_room",
+            "activity": "cleaning",
+            "start_minute": 974,
+            "end_minute": 981
+          },
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 1146,
+            "end_minute": 1158
+          }
+        ],
+        "tick_seconds": 10,
+        "measurement_interval_seconds": 600,
+        "purify_on": 35,
+        "purify_off": 15
+      },
+      "map": {
+        "width": 15,
+        "height": 11,
+        "grid": [
+          "###############",
+          "#......#......#",
+          "#..XX..#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "#..X...########",
+          "#..X...#......#",
+          "#......#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "###############"
+        ],
+        "legend": {
+          "#": "wall",
+          ".": "floor",
+          "X": "obstacle",
+          "D": "door"
+        },
+        "rooms": [
+          {
+            "id": "living_room",
+            "name": "거실",
+            "bounds": [
+              1,
+              1,
+              6,
+              9
+            ],
+            "target": [
+              2,
+              4
+            ]
+          },
+          {
+            "id": "kitchen",
+            "name": "주방",
+            "bounds": [
+              8,
+              1,
+              13,
+              4
+            ],
+            "target": [
+              11,
+              3
+            ]
+          },
+          {
+            "id": "bedroom",
+            "name": "침실",
+            "bounds": [
+              8,
+              6,
+              13,
+              9
+            ],
+            "target": [
+              11,
+              8
+            ]
+          }
+        ],
+        "start": [
+          2,
+          4
+        ]
+      }
+    },
+    {
+      "run_id": "run_simulator_v2",
+      "scenario_day": 36,
+      "scenario": {
+        "rule_version": "pm25-v1.1",
+        "event_seed_version": "pm25-v1",
+        "partial_purification": "(1 - purification_rate) ** (seconds / 60)",
+        "seed": 100,
+        "day_index": 35,
+        "late_dinner": false,
+        "schedule_source": "generated",
+        "time_unit": "minute",
+        "pm25_unit": "µg/m³",
+        "initial_pm25": 10.0,
+        "natural_baseline": 10.0,
+        "natural_decay_rate": 0.01,
+        "purification_rate": 0.05,
+        "purification_floor": 5.0,
+        "activity_rates": {
+          "cooking": 3.0,
+          "cleaning": 2.0,
+          "bedding": 2.0
+        },
+        "events": [
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 426,
+            "end_minute": 445
+          },
+          {
+            "room": "bedroom",
+            "activity": "bedding",
+            "start_minute": 573,
+            "end_minute": 580
+          },
+          {
+            "room": "living_room",
+            "activity": "cleaning",
+            "start_minute": 795,
+            "end_minute": 802
+          },
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 1114,
+            "end_minute": 1131
+          }
+        ],
+        "tick_seconds": 10,
+        "measurement_interval_seconds": 600,
+        "purify_on": 35,
+        "purify_off": 15
+      },
+      "map": {
+        "width": 15,
+        "height": 11,
+        "grid": [
+          "###############",
+          "#......#......#",
+          "#..XX..#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "#..X...########",
+          "#..X...#......#",
+          "#......#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "###############"
+        ],
+        "legend": {
+          "#": "wall",
+          ".": "floor",
+          "X": "obstacle",
+          "D": "door"
+        },
+        "rooms": [
+          {
+            "id": "living_room",
+            "name": "거실",
+            "bounds": [
+              1,
+              1,
+              6,
+              9
+            ],
+            "target": [
+              2,
+              4
+            ]
+          },
+          {
+            "id": "kitchen",
+            "name": "주방",
+            "bounds": [
+              8,
+              1,
+              13,
+              4
+            ],
+            "target": [
+              11,
+              3
+            ]
+          },
+          {
+            "id": "bedroom",
+            "name": "침실",
+            "bounds": [
+              8,
+              6,
+              13,
+              9
+            ],
+            "target": [
+              11,
+              8
+            ]
+          }
+        ],
+        "start": [
+          2,
+          4
+        ]
+      }
+    },
+    {
+      "run_id": "run_simulator_v2",
+      "scenario_day": 37,
+      "scenario": {
+        "rule_version": "pm25-v1.1",
+        "event_seed_version": "pm25-v1",
+        "partial_purification": "(1 - purification_rate) ** (seconds / 60)",
+        "seed": 100,
+        "day_index": 36,
+        "late_dinner": false,
+        "schedule_source": "generated",
+        "time_unit": "minute",
+        "pm25_unit": "µg/m³",
+        "initial_pm25": 10.0,
+        "natural_baseline": 10.0,
+        "natural_decay_rate": 0.01,
+        "purification_rate": 0.05,
+        "purification_floor": 5.0,
+        "activity_rates": {
+          "cooking": 3.0,
+          "cleaning": 2.0,
+          "bedding": 2.0
+        },
+        "events": [
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 532,
+            "end_minute": 551
+          },
+          {
+            "room": "bedroom",
+            "activity": "bedding",
+            "start_minute": 541,
+            "end_minute": 548
+          },
+          {
+            "room": "living_room",
+            "activity": "cleaning",
+            "start_minute": 889,
+            "end_minute": 897
+          },
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 1132,
+            "end_minute": 1142
+          }
+        ],
+        "tick_seconds": 10,
+        "measurement_interval_seconds": 600,
+        "purify_on": 35,
+        "purify_off": 15
+      },
+      "map": {
+        "width": 15,
+        "height": 11,
+        "grid": [
+          "###############",
+          "#......#......#",
+          "#..XX..#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "#..X...########",
+          "#..X...#......#",
+          "#......#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "###############"
+        ],
+        "legend": {
+          "#": "wall",
+          ".": "floor",
+          "X": "obstacle",
+          "D": "door"
+        },
+        "rooms": [
+          {
+            "id": "living_room",
+            "name": "거실",
+            "bounds": [
+              1,
+              1,
+              6,
+              9
+            ],
+            "target": [
+              2,
+              4
+            ]
+          },
+          {
+            "id": "kitchen",
+            "name": "주방",
+            "bounds": [
+              8,
+              1,
+              13,
+              4
+            ],
+            "target": [
+              11,
+              3
+            ]
+          },
+          {
+            "id": "bedroom",
+            "name": "침실",
+            "bounds": [
+              8,
+              6,
+              13,
+              9
+            ],
+            "target": [
+              11,
+              8
+            ]
+          }
+        ],
+        "start": [
+          2,
+          4
+        ]
+      }
+    },
+    {
+      "run_id": "run_simulator_v2",
+      "scenario_day": 38,
+      "scenario": {
+        "rule_version": "pm25-v1.1",
+        "event_seed_version": "pm25-v1",
+        "partial_purification": "(1 - purification_rate) ** (seconds / 60)",
+        "seed": 100,
+        "day_index": 37,
+        "late_dinner": false,
+        "schedule_source": "generated",
+        "time_unit": "minute",
+        "pm25_unit": "µg/m³",
+        "initial_pm25": 10.0,
+        "natural_baseline": 10.0,
+        "natural_decay_rate": 0.01,
+        "purification_rate": 0.05,
+        "purification_floor": 5.0,
+        "activity_rates": {
+          "cooking": 3.0,
+          "cleaning": 2.0,
+          "bedding": 2.0
+        },
+        "events": [
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 463,
+            "end_minute": 480
+          },
+          {
+            "room": "bedroom",
+            "activity": "bedding",
+            "start_minute": 541,
+            "end_minute": 550
+          },
+          {
+            "room": "living_room",
+            "activity": "cleaning",
+            "start_minute": 871,
+            "end_minute": 876
+          },
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 1179,
+            "end_minute": 1189
+          }
+        ],
+        "tick_seconds": 10,
+        "measurement_interval_seconds": 600,
+        "purify_on": 35,
+        "purify_off": 15
+      },
+      "map": {
+        "width": 15,
+        "height": 11,
+        "grid": [
+          "###############",
+          "#......#......#",
+          "#..XX..#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "#..X...########",
+          "#..X...#......#",
+          "#......#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "###############"
+        ],
+        "legend": {
+          "#": "wall",
+          ".": "floor",
+          "X": "obstacle",
+          "D": "door"
+        },
+        "rooms": [
+          {
+            "id": "living_room",
+            "name": "거실",
+            "bounds": [
+              1,
+              1,
+              6,
+              9
+            ],
+            "target": [
+              2,
+              4
+            ]
+          },
+          {
+            "id": "kitchen",
+            "name": "주방",
+            "bounds": [
+              8,
+              1,
+              13,
+              4
+            ],
+            "target": [
+              11,
+              3
+            ]
+          },
+          {
+            "id": "bedroom",
+            "name": "침실",
+            "bounds": [
+              8,
+              6,
+              13,
+              9
+            ],
+            "target": [
+              11,
+              8
+            ]
+          }
+        ],
+        "start": [
+          2,
+          4
+        ]
+      }
+    },
+    {
+      "run_id": "run_simulator_v2",
+      "scenario_day": 39,
+      "scenario": {
+        "rule_version": "pm25-v1.1",
+        "event_seed_version": "pm25-v1",
+        "partial_purification": "(1 - purification_rate) ** (seconds / 60)",
+        "seed": 100,
+        "day_index": 38,
+        "late_dinner": false,
+        "schedule_source": "generated",
+        "time_unit": "minute",
+        "pm25_unit": "µg/m³",
+        "initial_pm25": 10.0,
+        "natural_baseline": 10.0,
+        "natural_decay_rate": 0.01,
+        "purification_rate": 0.05,
+        "purification_floor": 5.0,
+        "activity_rates": {
+          "cooking": 3.0,
+          "cleaning": 2.0,
+          "bedding": 2.0
+        },
+        "events": [
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 424,
+            "end_minute": 436
+          },
+          {
+            "room": "bedroom",
+            "activity": "bedding",
+            "start_minute": 472,
+            "end_minute": 482
+          },
+          {
+            "room": "living_room",
+            "activity": "cleaning",
+            "start_minute": 950,
+            "end_minute": 957
+          },
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 1181,
+            "end_minute": 1198
+          }
+        ],
+        "tick_seconds": 10,
+        "measurement_interval_seconds": 600,
+        "purify_on": 35,
+        "purify_off": 15
+      },
+      "map": {
+        "width": 15,
+        "height": 11,
+        "grid": [
+          "###############",
+          "#......#......#",
+          "#..XX..#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "#..X...########",
+          "#..X...#......#",
+          "#......#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "###############"
+        ],
+        "legend": {
+          "#": "wall",
+          ".": "floor",
+          "X": "obstacle",
+          "D": "door"
+        },
+        "rooms": [
+          {
+            "id": "living_room",
+            "name": "거실",
+            "bounds": [
+              1,
+              1,
+              6,
+              9
+            ],
+            "target": [
+              2,
+              4
+            ]
+          },
+          {
+            "id": "kitchen",
+            "name": "주방",
+            "bounds": [
+              8,
+              1,
+              13,
+              4
+            ],
+            "target": [
+              11,
+              3
+            ]
+          },
+          {
+            "id": "bedroom",
+            "name": "침실",
+            "bounds": [
+              8,
+              6,
+              13,
+              9
+            ],
+            "target": [
+              11,
+              8
+            ]
+          }
+        ],
+        "start": [
+          2,
+          4
+        ]
+      }
+    },
+    {
+      "run_id": "run_simulator_v2",
+      "scenario_day": 40,
+      "scenario": {
+        "rule_version": "pm25-v1.1",
+        "event_seed_version": "pm25-v1",
+        "partial_purification": "(1 - purification_rate) ** (seconds / 60)",
+        "seed": 100,
+        "day_index": 39,
+        "late_dinner": false,
+        "schedule_source": "generated",
+        "time_unit": "minute",
+        "pm25_unit": "µg/m³",
+        "initial_pm25": 10.0,
+        "natural_baseline": 10.0,
+        "natural_decay_rate": 0.01,
+        "purification_rate": 0.05,
+        "purification_floor": 5.0,
+        "activity_rates": {
+          "cooking": 3.0,
+          "cleaning": 2.0,
+          "bedding": 2.0
+        },
+        "events": [
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 432,
+            "end_minute": 449
+          },
+          {
+            "room": "bedroom",
+            "activity": "bedding",
+            "start_minute": 579,
+            "end_minute": 586
+          },
+          {
+            "room": "living_room",
+            "activity": "cleaning",
+            "start_minute": 992,
+            "end_minute": 1000
+          },
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 1110,
+            "end_minute": 1126
+          }
+        ],
+        "tick_seconds": 10,
+        "measurement_interval_seconds": 600,
+        "purify_on": 35,
+        "purify_off": 15
+      },
+      "map": {
+        "width": 15,
+        "height": 11,
+        "grid": [
+          "###############",
+          "#......#......#",
+          "#..XX..#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "#..X...########",
+          "#..X...#......#",
+          "#......#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "###############"
+        ],
+        "legend": {
+          "#": "wall",
+          ".": "floor",
+          "X": "obstacle",
+          "D": "door"
+        },
+        "rooms": [
+          {
+            "id": "living_room",
+            "name": "거실",
+            "bounds": [
+              1,
+              1,
+              6,
+              9
+            ],
+            "target": [
+              2,
+              4
+            ]
+          },
+          {
+            "id": "kitchen",
+            "name": "주방",
+            "bounds": [
+              8,
+              1,
+              13,
+              4
+            ],
+            "target": [
+              11,
+              3
+            ]
+          },
+          {
+            "id": "bedroom",
+            "name": "침실",
+            "bounds": [
+              8,
+              6,
+              13,
+              9
+            ],
+            "target": [
+              11,
+              8
+            ]
+          }
+        ],
+        "start": [
+          2,
+          4
+        ]
+      }
+    },
+    {
+      "run_id": "run_simulator_v2",
+      "scenario_day": 41,
+      "scenario": {
+        "rule_version": "pm25-v1.1",
+        "event_seed_version": "pm25-v1",
+        "partial_purification": "(1 - purification_rate) ** (seconds / 60)",
+        "seed": 100,
+        "day_index": 40,
+        "late_dinner": false,
+        "schedule_source": "generated",
+        "time_unit": "minute",
+        "pm25_unit": "µg/m³",
+        "initial_pm25": 10.0,
+        "natural_baseline": 10.0,
+        "natural_decay_rate": 0.01,
+        "purification_rate": 0.05,
+        "purification_floor": 5.0,
+        "activity_rates": {
+          "cooking": 3.0,
+          "cleaning": 2.0,
+          "bedding": 2.0
+        },
+        "events": [
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 420,
+            "end_minute": 431
+          },
+          {
+            "room": "bedroom",
+            "activity": "bedding",
+            "start_minute": 532,
+            "end_minute": 541
+          },
+          {
+            "room": "living_room",
+            "activity": "cleaning",
+            "start_minute": 834,
+            "end_minute": 844
+          },
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 1164,
+            "end_minute": 1179
+          }
+        ],
+        "tick_seconds": 10,
+        "measurement_interval_seconds": 600,
+        "purify_on": 35,
+        "purify_off": 15
+      },
+      "map": {
+        "width": 15,
+        "height": 11,
+        "grid": [
+          "###############",
+          "#......#......#",
+          "#..XX..#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "#..X...########",
+          "#..X...#......#",
+          "#......#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "###############"
+        ],
+        "legend": {
+          "#": "wall",
+          ".": "floor",
+          "X": "obstacle",
+          "D": "door"
+        },
+        "rooms": [
+          {
+            "id": "living_room",
+            "name": "거실",
+            "bounds": [
+              1,
+              1,
+              6,
+              9
+            ],
+            "target": [
+              2,
+              4
+            ]
+          },
+          {
+            "id": "kitchen",
+            "name": "주방",
+            "bounds": [
+              8,
+              1,
+              13,
+              4
+            ],
+            "target": [
+              11,
+              3
+            ]
+          },
+          {
+            "id": "bedroom",
+            "name": "침실",
+            "bounds": [
+              8,
+              6,
+              13,
+              9
+            ],
+            "target": [
+              11,
+              8
+            ]
+          }
+        ],
+        "start": [
+          2,
+          4
+        ]
+      }
+    },
+    {
+      "run_id": "run_simulator_v2",
+      "scenario_day": 42,
+      "scenario": {
+        "rule_version": "pm25-v1.1",
+        "event_seed_version": "pm25-v1",
+        "partial_purification": "(1 - purification_rate) ** (seconds / 60)",
+        "seed": 100,
+        "day_index": 41,
+        "late_dinner": false,
+        "schedule_source": "generated",
+        "time_unit": "minute",
+        "pm25_unit": "µg/m³",
+        "initial_pm25": 10.0,
+        "natural_baseline": 10.0,
+        "natural_decay_rate": 0.01,
+        "purification_rate": 0.05,
+        "purification_floor": 5.0,
+        "activity_rates": {
+          "cooking": 3.0,
+          "cleaning": 2.0,
+          "bedding": 2.0
+        },
+        "events": [
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 439,
+            "end_minute": 451
+          },
+          {
+            "room": "bedroom",
+            "activity": "bedding",
+            "start_minute": 526,
+            "end_minute": 536
+          },
+          {
+            "room": "living_room",
+            "activity": "cleaning",
+            "start_minute": 890,
+            "end_minute": 897
+          },
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 1143,
+            "end_minute": 1159
+          }
+        ],
+        "tick_seconds": 10,
+        "measurement_interval_seconds": 600,
+        "purify_on": 35,
+        "purify_off": 15
+      },
+      "map": {
+        "width": 15,
+        "height": 11,
+        "grid": [
+          "###############",
+          "#......#......#",
+          "#..XX..#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "#..X...########",
+          "#..X...#......#",
+          "#......#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "###############"
+        ],
+        "legend": {
+          "#": "wall",
+          ".": "floor",
+          "X": "obstacle",
+          "D": "door"
+        },
+        "rooms": [
+          {
+            "id": "living_room",
+            "name": "거실",
+            "bounds": [
+              1,
+              1,
+              6,
+              9
+            ],
+            "target": [
+              2,
+              4
+            ]
+          },
+          {
+            "id": "kitchen",
+            "name": "주방",
+            "bounds": [
+              8,
+              1,
+              13,
+              4
+            ],
+            "target": [
+              11,
+              3
+            ]
+          },
+          {
+            "id": "bedroom",
+            "name": "침실",
+            "bounds": [
+              8,
+              6,
+              13,
+              9
+            ],
+            "target": [
+              11,
+              8
+            ]
+          }
+        ],
+        "start": [
+          2,
+          4
+        ]
+      }
+    },
+    {
+      "run_id": "run_simulator_v2",
+      "scenario_day": 43,
+      "scenario": {
+        "rule_version": "pm25-v1.1",
+        "event_seed_version": "pm25-v1",
+        "partial_purification": "(1 - purification_rate) ** (seconds / 60)",
+        "seed": 100,
+        "day_index": 42,
+        "late_dinner": false,
+        "schedule_source": "generated",
+        "time_unit": "minute",
+        "pm25_unit": "µg/m³",
+        "initial_pm25": 10.0,
+        "natural_baseline": 10.0,
+        "natural_decay_rate": 0.01,
+        "purification_rate": 0.05,
+        "purification_floor": 5.0,
+        "activity_rates": {
+          "cooking": 3.0,
+          "cleaning": 2.0,
+          "bedding": 2.0
+        },
+        "events": [
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 483,
+            "end_minute": 496
+          },
+          {
+            "room": "bedroom",
+            "activity": "bedding",
+            "start_minute": 528,
+            "end_minute": 536
+          },
+          {
+            "room": "living_room",
+            "activity": "cleaning",
+            "start_minute": 969,
+            "end_minute": 978
+          },
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 1196,
+            "end_minute": 1211
+          }
+        ],
+        "tick_seconds": 10,
+        "measurement_interval_seconds": 600,
+        "purify_on": 35,
+        "purify_off": 15
+      },
+      "map": {
+        "width": 15,
+        "height": 11,
+        "grid": [
+          "###############",
+          "#......#......#",
+          "#..XX..#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "#..X...########",
+          "#..X...#......#",
+          "#......#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "###############"
+        ],
+        "legend": {
+          "#": "wall",
+          ".": "floor",
+          "X": "obstacle",
+          "D": "door"
+        },
+        "rooms": [
+          {
+            "id": "living_room",
+            "name": "거실",
+            "bounds": [
+              1,
+              1,
+              6,
+              9
+            ],
+            "target": [
+              2,
+              4
+            ]
+          },
+          {
+            "id": "kitchen",
+            "name": "주방",
+            "bounds": [
+              8,
+              1,
+              13,
+              4
+            ],
+            "target": [
+              11,
+              3
+            ]
+          },
+          {
+            "id": "bedroom",
+            "name": "침실",
+            "bounds": [
+              8,
+              6,
+              13,
+              9
+            ],
+            "target": [
+              11,
+              8
+            ]
+          }
+        ],
+        "start": [
+          2,
+          4
+        ]
+      }
+    },
+    {
+      "run_id": "run_simulator_v2",
+      "scenario_day": 44,
+      "scenario": {
+        "rule_version": "pm25-v1.1",
+        "event_seed_version": "pm25-v1",
+        "partial_purification": "(1 - purification_rate) ** (seconds / 60)",
+        "seed": 100,
+        "day_index": 43,
+        "late_dinner": false,
+        "schedule_source": "generated",
+        "time_unit": "minute",
+        "pm25_unit": "µg/m³",
+        "initial_pm25": 10.0,
+        "natural_baseline": 10.0,
+        "natural_decay_rate": 0.01,
+        "purification_rate": 0.05,
+        "purification_floor": 5.0,
+        "activity_rates": {
+          "cooking": 3.0,
+          "cleaning": 2.0,
+          "bedding": 2.0
+        },
+        "events": [
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 530,
+            "end_minute": 544
+          },
+          {
+            "room": "bedroom",
+            "activity": "bedding",
+            "start_minute": 573,
+            "end_minute": 582
+          },
+          {
+            "room": "living_room",
+            "activity": "cleaning",
+            "start_minute": 944,
+            "end_minute": 953
+          },
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 1195,
+            "end_minute": 1206
+          }
+        ],
+        "tick_seconds": 10,
+        "measurement_interval_seconds": 600,
+        "purify_on": 35,
+        "purify_off": 15
+      },
+      "map": {
+        "width": 15,
+        "height": 11,
+        "grid": [
+          "###############",
+          "#......#......#",
+          "#..XX..#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "#..X...########",
+          "#..X...#......#",
+          "#......#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "###############"
+        ],
+        "legend": {
+          "#": "wall",
+          ".": "floor",
+          "X": "obstacle",
+          "D": "door"
+        },
+        "rooms": [
+          {
+            "id": "living_room",
+            "name": "거실",
+            "bounds": [
+              1,
+              1,
+              6,
+              9
+            ],
+            "target": [
+              2,
+              4
+            ]
+          },
+          {
+            "id": "kitchen",
+            "name": "주방",
+            "bounds": [
+              8,
+              1,
+              13,
+              4
+            ],
+            "target": [
+              11,
+              3
+            ]
+          },
+          {
+            "id": "bedroom",
+            "name": "침실",
+            "bounds": [
+              8,
+              6,
+              13,
+              9
+            ],
+            "target": [
+              11,
+              8
+            ]
+          }
+        ],
+        "start": [
+          2,
+          4
+        ]
+      }
+    },
+    {
+      "run_id": "run_simulator_v2",
+      "scenario_day": 45,
+      "scenario": {
+        "rule_version": "pm25-v1.1",
+        "event_seed_version": "pm25-v1",
+        "partial_purification": "(1 - purification_rate) ** (seconds / 60)",
+        "seed": 100,
+        "day_index": 44,
+        "late_dinner": false,
+        "schedule_source": "generated",
+        "time_unit": "minute",
+        "pm25_unit": "µg/m³",
+        "initial_pm25": 10.0,
+        "natural_baseline": 10.0,
+        "natural_decay_rate": 0.01,
+        "purification_rate": 0.05,
+        "purification_floor": 5.0,
+        "activity_rates": {
+          "cooking": 3.0,
+          "cleaning": 2.0,
+          "bedding": 2.0
+        },
+        "events": [
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 436,
+            "end_minute": 450
+          },
+          {
+            "room": "bedroom",
+            "activity": "bedding",
+            "start_minute": 541,
+            "end_minute": 546
+          },
+          {
+            "room": "living_room",
+            "activity": "cleaning",
+            "start_minute": 782,
+            "end_minute": 791
+          },
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 1141,
+            "end_minute": 1157
+          }
+        ],
+        "tick_seconds": 10,
+        "measurement_interval_seconds": 600,
+        "purify_on": 35,
+        "purify_off": 15
+      },
+      "map": {
+        "width": 15,
+        "height": 11,
+        "grid": [
+          "###############",
+          "#......#......#",
+          "#..XX..#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "#..X...########",
+          "#..X...#......#",
+          "#......#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "###############"
+        ],
+        "legend": {
+          "#": "wall",
+          ".": "floor",
+          "X": "obstacle",
+          "D": "door"
+        },
+        "rooms": [
+          {
+            "id": "living_room",
+            "name": "거실",
+            "bounds": [
+              1,
+              1,
+              6,
+              9
+            ],
+            "target": [
+              2,
+              4
+            ]
+          },
+          {
+            "id": "kitchen",
+            "name": "주방",
+            "bounds": [
+              8,
+              1,
+              13,
+              4
+            ],
+            "target": [
+              11,
+              3
+            ]
+          },
+          {
+            "id": "bedroom",
+            "name": "침실",
+            "bounds": [
+              8,
+              6,
+              13,
+              9
+            ],
+            "target": [
+              11,
+              8
+            ]
+          }
+        ],
+        "start": [
+          2,
+          4
+        ]
+      }
+    },
+    {
+      "run_id": "run_simulator_v2",
+      "scenario_day": 46,
+      "scenario": {
+        "rule_version": "pm25-v1.1",
+        "event_seed_version": "pm25-v1",
+        "partial_purification": "(1 - purification_rate) ** (seconds / 60)",
+        "seed": 100,
+        "day_index": 45,
+        "late_dinner": false,
+        "schedule_source": "generated",
+        "time_unit": "minute",
+        "pm25_unit": "µg/m³",
+        "initial_pm25": 10.0,
+        "natural_baseline": 10.0,
+        "natural_decay_rate": 0.01,
+        "purification_rate": 0.05,
+        "purification_floor": 5.0,
+        "activity_rates": {
+          "cooking": 3.0,
+          "cleaning": 2.0,
+          "bedding": 2.0
+        },
+        "events": [
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 484,
+            "end_minute": 502
+          },
+          {
+            "room": "bedroom",
+            "activity": "bedding",
+            "start_minute": 504,
+            "end_minute": 513
+          },
+          {
+            "room": "living_room",
+            "activity": "cleaning",
+            "start_minute": 872,
+            "end_minute": 877
+          },
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 1098,
+            "end_minute": 1113
+          }
+        ],
+        "tick_seconds": 10,
+        "measurement_interval_seconds": 600,
+        "purify_on": 35,
+        "purify_off": 15
+      },
+      "map": {
+        "width": 15,
+        "height": 11,
+        "grid": [
+          "###############",
+          "#......#......#",
+          "#..XX..#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "#..X...########",
+          "#..X...#......#",
+          "#......#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "###############"
+        ],
+        "legend": {
+          "#": "wall",
+          ".": "floor",
+          "X": "obstacle",
+          "D": "door"
+        },
+        "rooms": [
+          {
+            "id": "living_room",
+            "name": "거실",
+            "bounds": [
+              1,
+              1,
+              6,
+              9
+            ],
+            "target": [
+              2,
+              4
+            ]
+          },
+          {
+            "id": "kitchen",
+            "name": "주방",
+            "bounds": [
+              8,
+              1,
+              13,
+              4
+            ],
+            "target": [
+              11,
+              3
+            ]
+          },
+          {
+            "id": "bedroom",
+            "name": "침실",
+            "bounds": [
+              8,
+              6,
+              13,
+              9
+            ],
+            "target": [
+              11,
+              8
+            ]
+          }
+        ],
+        "start": [
+          2,
+          4
+        ]
+      }
+    },
+    {
+      "run_id": "run_simulator_v2",
+      "scenario_day": 47,
+      "scenario": {
+        "rule_version": "pm25-v1.1",
+        "event_seed_version": "pm25-v1",
+        "partial_purification": "(1 - purification_rate) ** (seconds / 60)",
+        "seed": 100,
+        "day_index": 46,
+        "late_dinner": false,
+        "schedule_source": "generated",
+        "time_unit": "minute",
+        "pm25_unit": "µg/m³",
+        "initial_pm25": 10.0,
+        "natural_baseline": 10.0,
+        "natural_decay_rate": 0.01,
+        "purification_rate": 0.05,
+        "purification_floor": 5.0,
+        "activity_rates": {
+          "cooking": 3.0,
+          "cleaning": 2.0,
+          "bedding": 2.0
+        },
+        "events": [
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 444,
+            "end_minute": 461
+          },
+          {
+            "room": "bedroom",
+            "activity": "bedding",
+            "start_minute": 457,
+            "end_minute": 463
+          },
+          {
+            "room": "living_room",
+            "activity": "cleaning",
+            "start_minute": 1016,
+            "end_minute": 1025
+          },
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 1137,
+            "end_minute": 1151
+          }
+        ],
+        "tick_seconds": 10,
+        "measurement_interval_seconds": 600,
+        "purify_on": 35,
+        "purify_off": 15
+      },
+      "map": {
+        "width": 15,
+        "height": 11,
+        "grid": [
+          "###############",
+          "#......#......#",
+          "#..XX..#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "#..X...########",
+          "#..X...#......#",
+          "#......#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "###############"
+        ],
+        "legend": {
+          "#": "wall",
+          ".": "floor",
+          "X": "obstacle",
+          "D": "door"
+        },
+        "rooms": [
+          {
+            "id": "living_room",
+            "name": "거실",
+            "bounds": [
+              1,
+              1,
+              6,
+              9
+            ],
+            "target": [
+              2,
+              4
+            ]
+          },
+          {
+            "id": "kitchen",
+            "name": "주방",
+            "bounds": [
+              8,
+              1,
+              13,
+              4
+            ],
+            "target": [
+              11,
+              3
+            ]
+          },
+          {
+            "id": "bedroom",
+            "name": "침실",
+            "bounds": [
+              8,
+              6,
+              13,
+              9
+            ],
+            "target": [
+              11,
+              8
+            ]
+          }
+        ],
+        "start": [
+          2,
+          4
+        ]
+      }
+    },
+    {
+      "run_id": "run_simulator_v2",
+      "scenario_day": 48,
+      "scenario": {
+        "rule_version": "pm25-v1.1",
+        "event_seed_version": "pm25-v1",
+        "partial_purification": "(1 - purification_rate) ** (seconds / 60)",
+        "seed": 100,
+        "day_index": 47,
+        "late_dinner": false,
+        "schedule_source": "generated",
+        "time_unit": "minute",
+        "pm25_unit": "µg/m³",
+        "initial_pm25": 10.0,
+        "natural_baseline": 10.0,
+        "natural_decay_rate": 0.01,
+        "purification_rate": 0.05,
+        "purification_floor": 5.0,
+        "activity_rates": {
+          "cooking": 3.0,
+          "cleaning": 2.0,
+          "bedding": 2.0
+        },
+        "events": [
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 461,
+            "end_minute": 478
+          },
+          {
+            "room": "bedroom",
+            "activity": "bedding",
+            "start_minute": 520,
+            "end_minute": 525
+          },
+          {
+            "room": "living_room",
+            "activity": "cleaning",
+            "start_minute": 959,
+            "end_minute": 967
+          },
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 1127,
+            "end_minute": 1138
+          }
+        ],
+        "tick_seconds": 10,
+        "measurement_interval_seconds": 600,
+        "purify_on": 35,
+        "purify_off": 15
+      },
+      "map": {
+        "width": 15,
+        "height": 11,
+        "grid": [
+          "###############",
+          "#......#......#",
+          "#..XX..#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "#..X...########",
+          "#..X...#......#",
+          "#......#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "###############"
+        ],
+        "legend": {
+          "#": "wall",
+          ".": "floor",
+          "X": "obstacle",
+          "D": "door"
+        },
+        "rooms": [
+          {
+            "id": "living_room",
+            "name": "거실",
+            "bounds": [
+              1,
+              1,
+              6,
+              9
+            ],
+            "target": [
+              2,
+              4
+            ]
+          },
+          {
+            "id": "kitchen",
+            "name": "주방",
+            "bounds": [
+              8,
+              1,
+              13,
+              4
+            ],
+            "target": [
+              11,
+              3
+            ]
+          },
+          {
+            "id": "bedroom",
+            "name": "침실",
+            "bounds": [
+              8,
+              6,
+              13,
+              9
+            ],
+            "target": [
+              11,
+              8
+            ]
+          }
+        ],
+        "start": [
+          2,
+          4
+        ]
+      }
+    },
+    {
+      "run_id": "run_simulator_v2",
+      "scenario_day": 49,
+      "scenario": {
+        "rule_version": "pm25-v1.1",
+        "event_seed_version": "pm25-v1",
+        "partial_purification": "(1 - purification_rate) ** (seconds / 60)",
+        "seed": 100,
+        "day_index": 48,
+        "late_dinner": false,
+        "schedule_source": "generated",
+        "time_unit": "minute",
+        "pm25_unit": "µg/m³",
+        "initial_pm25": 10.0,
+        "natural_baseline": 10.0,
+        "natural_decay_rate": 0.01,
+        "purification_rate": 0.05,
+        "purification_floor": 5.0,
+        "activity_rates": {
+          "cooking": 3.0,
+          "cleaning": 2.0,
+          "bedding": 2.0
+        },
+        "events": [
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 535,
+            "end_minute": 551
+          },
+          {
+            "room": "bedroom",
+            "activity": "bedding",
+            "start_minute": 557,
+            "end_minute": 566
+          },
+          {
+            "room": "living_room",
+            "activity": "cleaning",
+            "start_minute": 958,
+            "end_minute": 966
+          },
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 1183,
+            "end_minute": 1203
+          }
+        ],
+        "tick_seconds": 10,
+        "measurement_interval_seconds": 600,
+        "purify_on": 35,
+        "purify_off": 15
+      },
+      "map": {
+        "width": 15,
+        "height": 11,
+        "grid": [
+          "###############",
+          "#......#......#",
+          "#..XX..#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "#..X...########",
+          "#..X...#......#",
+          "#......#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "###############"
+        ],
+        "legend": {
+          "#": "wall",
+          ".": "floor",
+          "X": "obstacle",
+          "D": "door"
+        },
+        "rooms": [
+          {
+            "id": "living_room",
+            "name": "거실",
+            "bounds": [
+              1,
+              1,
+              6,
+              9
+            ],
+            "target": [
+              2,
+              4
+            ]
+          },
+          {
+            "id": "kitchen",
+            "name": "주방",
+            "bounds": [
+              8,
+              1,
+              13,
+              4
+            ],
+            "target": [
+              11,
+              3
+            ]
+          },
+          {
+            "id": "bedroom",
+            "name": "침실",
+            "bounds": [
+              8,
+              6,
+              13,
+              9
+            ],
+            "target": [
+              11,
+              8
+            ]
+          }
+        ],
+        "start": [
+          2,
+          4
+        ]
+      }
+    },
+    {
+      "run_id": "run_simulator_v2",
+      "scenario_day": 50,
+      "scenario": {
+        "rule_version": "pm25-v1.1",
+        "event_seed_version": "pm25-v1",
+        "partial_purification": "(1 - purification_rate) ** (seconds / 60)",
+        "seed": 100,
+        "day_index": 49,
+        "late_dinner": false,
+        "schedule_source": "generated",
+        "time_unit": "minute",
+        "pm25_unit": "µg/m³",
+        "initial_pm25": 10.0,
+        "natural_baseline": 10.0,
+        "natural_decay_rate": 0.01,
+        "purification_rate": 0.05,
+        "purification_floor": 5.0,
+        "activity_rates": {
+          "cooking": 3.0,
+          "cleaning": 2.0,
+          "bedding": 2.0
+        },
+        "events": [
+          {
+            "room": "bedroom",
+            "activity": "bedding",
+            "start_minute": 502,
+            "end_minute": 509
+          },
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 528,
+            "end_minute": 545
+          },
+          {
+            "room": "living_room",
+            "activity": "cleaning",
+            "start_minute": 916,
+            "end_minute": 922
+          },
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 1190,
+            "end_minute": 1210
+          }
+        ],
+        "tick_seconds": 10,
+        "measurement_interval_seconds": 600,
+        "purify_on": 35,
+        "purify_off": 15
+      },
+      "map": {
+        "width": 15,
+        "height": 11,
+        "grid": [
+          "###############",
+          "#......#......#",
+          "#..XX..#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "#..X...########",
+          "#..X...#......#",
+          "#......#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "###############"
+        ],
+        "legend": {
+          "#": "wall",
+          ".": "floor",
+          "X": "obstacle",
+          "D": "door"
+        },
+        "rooms": [
+          {
+            "id": "living_room",
+            "name": "거실",
+            "bounds": [
+              1,
+              1,
+              6,
+              9
+            ],
+            "target": [
+              2,
+              4
+            ]
+          },
+          {
+            "id": "kitchen",
+            "name": "주방",
+            "bounds": [
+              8,
+              1,
+              13,
+              4
+            ],
+            "target": [
+              11,
+              3
+            ]
+          },
+          {
+            "id": "bedroom",
+            "name": "침실",
+            "bounds": [
+              8,
+              6,
+              13,
+              9
+            ],
+            "target": [
+              11,
+              8
+            ]
+          }
+        ],
+        "start": [
+          2,
+          4
+        ]
+      }
+    },
+    {
+      "run_id": "run_simulator_v2",
+      "scenario_day": 51,
+      "scenario": {
+        "rule_version": "pm25-v1.1",
+        "event_seed_version": "pm25-v1",
+        "partial_purification": "(1 - purification_rate) ** (seconds / 60)",
+        "seed": 100,
+        "day_index": 50,
+        "late_dinner": false,
+        "schedule_source": "generated",
+        "time_unit": "minute",
+        "pm25_unit": "µg/m³",
+        "initial_pm25": 10.0,
+        "natural_baseline": 10.0,
+        "natural_decay_rate": 0.01,
+        "purification_rate": 0.05,
+        "purification_floor": 5.0,
+        "activity_rates": {
+          "cooking": 3.0,
+          "cleaning": 2.0,
+          "bedding": 2.0
+        },
+        "events": [
+          {
+            "room": "bedroom",
+            "activity": "bedding",
+            "start_minute": 479,
+            "end_minute": 485
+          },
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 517,
+            "end_minute": 533
+          },
+          {
+            "room": "living_room",
+            "activity": "cleaning",
+            "start_minute": 836,
+            "end_minute": 845
+          },
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 1184,
+            "end_minute": 1200
+          }
+        ],
+        "tick_seconds": 10,
+        "measurement_interval_seconds": 600,
+        "purify_on": 35,
+        "purify_off": 15
+      },
+      "map": {
+        "width": 15,
+        "height": 11,
+        "grid": [
+          "###############",
+          "#......#......#",
+          "#..XX..#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "#..X...########",
+          "#..X...#......#",
+          "#......#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "###############"
+        ],
+        "legend": {
+          "#": "wall",
+          ".": "floor",
+          "X": "obstacle",
+          "D": "door"
+        },
+        "rooms": [
+          {
+            "id": "living_room",
+            "name": "거실",
+            "bounds": [
+              1,
+              1,
+              6,
+              9
+            ],
+            "target": [
+              2,
+              4
+            ]
+          },
+          {
+            "id": "kitchen",
+            "name": "주방",
+            "bounds": [
+              8,
+              1,
+              13,
+              4
+            ],
+            "target": [
+              11,
+              3
+            ]
+          },
+          {
+            "id": "bedroom",
+            "name": "침실",
+            "bounds": [
+              8,
+              6,
+              13,
+              9
+            ],
+            "target": [
+              11,
+              8
+            ]
+          }
+        ],
+        "start": [
+          2,
+          4
+        ]
+      }
+    },
+    {
+      "run_id": "run_simulator_v2",
+      "scenario_day": 52,
+      "scenario": {
+        "rule_version": "pm25-v1.1",
+        "event_seed_version": "pm25-v1",
+        "partial_purification": "(1 - purification_rate) ** (seconds / 60)",
+        "seed": 100,
+        "day_index": 51,
+        "late_dinner": false,
+        "schedule_source": "generated",
+        "time_unit": "minute",
+        "pm25_unit": "µg/m³",
+        "initial_pm25": 10.0,
+        "natural_baseline": 10.0,
+        "natural_decay_rate": 0.01,
+        "purification_rate": 0.05,
+        "purification_floor": 5.0,
+        "activity_rates": {
+          "cooking": 3.0,
+          "cleaning": 2.0,
+          "bedding": 2.0
+        },
+        "events": [
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 446,
+            "end_minute": 463
+          },
+          {
+            "room": "bedroom",
+            "activity": "bedding",
+            "start_minute": 487,
+            "end_minute": 494
+          },
+          {
+            "room": "living_room",
+            "activity": "cleaning",
+            "start_minute": 804,
+            "end_minute": 813
+          },
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 1145,
+            "end_minute": 1162
+          }
+        ],
+        "tick_seconds": 10,
+        "measurement_interval_seconds": 600,
+        "purify_on": 35,
+        "purify_off": 15
+      },
+      "map": {
+        "width": 15,
+        "height": 11,
+        "grid": [
+          "###############",
+          "#......#......#",
+          "#..XX..#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "#..X...########",
+          "#..X...#......#",
+          "#......#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "###############"
+        ],
+        "legend": {
+          "#": "wall",
+          ".": "floor",
+          "X": "obstacle",
+          "D": "door"
+        },
+        "rooms": [
+          {
+            "id": "living_room",
+            "name": "거실",
+            "bounds": [
+              1,
+              1,
+              6,
+              9
+            ],
+            "target": [
+              2,
+              4
+            ]
+          },
+          {
+            "id": "kitchen",
+            "name": "주방",
+            "bounds": [
+              8,
+              1,
+              13,
+              4
+            ],
+            "target": [
+              11,
+              3
+            ]
+          },
+          {
+            "id": "bedroom",
+            "name": "침실",
+            "bounds": [
+              8,
+              6,
+              13,
+              9
+            ],
+            "target": [
+              11,
+              8
+            ]
+          }
+        ],
+        "start": [
+          2,
+          4
+        ]
+      }
+    },
+    {
+      "run_id": "run_simulator_v2",
+      "scenario_day": 53,
+      "scenario": {
+        "rule_version": "pm25-v1.1",
+        "event_seed_version": "pm25-v1",
+        "partial_purification": "(1 - purification_rate) ** (seconds / 60)",
+        "seed": 100,
+        "day_index": 52,
+        "late_dinner": false,
+        "schedule_source": "generated",
+        "time_unit": "minute",
+        "pm25_unit": "µg/m³",
+        "initial_pm25": 10.0,
+        "natural_baseline": 10.0,
+        "natural_decay_rate": 0.01,
+        "purification_rate": 0.05,
+        "purification_floor": 5.0,
+        "activity_rates": {
+          "cooking": 3.0,
+          "cleaning": 2.0,
+          "bedding": 2.0
+        },
+        "events": [
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 464,
+            "end_minute": 477
+          },
+          {
+            "room": "bedroom",
+            "activity": "bedding",
+            "start_minute": 486,
+            "end_minute": 491
+          },
+          {
+            "room": "living_room",
+            "activity": "cleaning",
+            "start_minute": 895,
+            "end_minute": 905
+          },
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 1096,
+            "end_minute": 1115
+          }
+        ],
+        "tick_seconds": 10,
+        "measurement_interval_seconds": 600,
+        "purify_on": 35,
+        "purify_off": 15
+      },
+      "map": {
+        "width": 15,
+        "height": 11,
+        "grid": [
+          "###############",
+          "#......#......#",
+          "#..XX..#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "#..X...########",
+          "#..X...#......#",
+          "#......#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "###############"
+        ],
+        "legend": {
+          "#": "wall",
+          ".": "floor",
+          "X": "obstacle",
+          "D": "door"
+        },
+        "rooms": [
+          {
+            "id": "living_room",
+            "name": "거실",
+            "bounds": [
+              1,
+              1,
+              6,
+              9
+            ],
+            "target": [
+              2,
+              4
+            ]
+          },
+          {
+            "id": "kitchen",
+            "name": "주방",
+            "bounds": [
+              8,
+              1,
+              13,
+              4
+            ],
+            "target": [
+              11,
+              3
+            ]
+          },
+          {
+            "id": "bedroom",
+            "name": "침실",
+            "bounds": [
+              8,
+              6,
+              13,
+              9
+            ],
+            "target": [
+              11,
+              8
+            ]
+          }
+        ],
+        "start": [
+          2,
+          4
+        ]
+      }
+    },
+    {
+      "run_id": "run_simulator_v2",
+      "scenario_day": 54,
+      "scenario": {
+        "rule_version": "pm25-v1.1",
+        "event_seed_version": "pm25-v1",
+        "partial_purification": "(1 - purification_rate) ** (seconds / 60)",
+        "seed": 100,
+        "day_index": 53,
+        "late_dinner": false,
+        "schedule_source": "generated",
+        "time_unit": "minute",
+        "pm25_unit": "µg/m³",
+        "initial_pm25": 10.0,
+        "natural_baseline": 10.0,
+        "natural_decay_rate": 0.01,
+        "purification_rate": 0.05,
+        "purification_floor": 5.0,
+        "activity_rates": {
+          "cooking": 3.0,
+          "cleaning": 2.0,
+          "bedding": 2.0
+        },
+        "events": [
+          {
+            "room": "bedroom",
+            "activity": "bedding",
+            "start_minute": 470,
+            "end_minute": 480
+          },
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 488,
+            "end_minute": 504
+          },
+          {
+            "room": "living_room",
+            "activity": "cleaning",
+            "start_minute": 845,
+            "end_minute": 852
+          },
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 1137,
+            "end_minute": 1147
+          }
+        ],
+        "tick_seconds": 10,
+        "measurement_interval_seconds": 600,
+        "purify_on": 35,
+        "purify_off": 15
+      },
+      "map": {
+        "width": 15,
+        "height": 11,
+        "grid": [
+          "###############",
+          "#......#......#",
+          "#..XX..#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "#..X...########",
+          "#..X...#......#",
+          "#......#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "###############"
+        ],
+        "legend": {
+          "#": "wall",
+          ".": "floor",
+          "X": "obstacle",
+          "D": "door"
+        },
+        "rooms": [
+          {
+            "id": "living_room",
+            "name": "거실",
+            "bounds": [
+              1,
+              1,
+              6,
+              9
+            ],
+            "target": [
+              2,
+              4
+            ]
+          },
+          {
+            "id": "kitchen",
+            "name": "주방",
+            "bounds": [
+              8,
+              1,
+              13,
+              4
+            ],
+            "target": [
+              11,
+              3
+            ]
+          },
+          {
+            "id": "bedroom",
+            "name": "침실",
+            "bounds": [
+              8,
+              6,
+              13,
+              9
+            ],
+            "target": [
+              11,
+              8
+            ]
+          }
+        ],
+        "start": [
+          2,
+          4
+        ]
+      }
+    },
+    {
+      "run_id": "run_simulator_v2",
+      "scenario_day": 55,
+      "scenario": {
+        "rule_version": "pm25-v1.1",
+        "event_seed_version": "pm25-v1",
+        "partial_purification": "(1 - purification_rate) ** (seconds / 60)",
+        "seed": 100,
+        "day_index": 54,
+        "late_dinner": true,
+        "schedule_source": "generated",
+        "time_unit": "minute",
+        "pm25_unit": "µg/m³",
+        "initial_pm25": 10.0,
+        "natural_baseline": 10.0,
+        "natural_decay_rate": 0.01,
+        "purification_rate": 0.05,
+        "purification_floor": 5.0,
+        "activity_rates": {
+          "cooking": 3.0,
+          "cleaning": 2.0,
+          "bedding": 2.0
+        },
+        "events": [
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 450,
+            "end_minute": 460
+          },
+          {
+            "room": "bedroom",
+            "activity": "bedding",
+            "start_minute": 516,
+            "end_minute": 526
+          },
+          {
+            "room": "living_room",
+            "activity": "cleaning",
+            "start_minute": 941,
+            "end_minute": 948
+          },
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 1252,
+            "end_minute": 1266
+          }
+        ],
+        "tick_seconds": 10,
+        "measurement_interval_seconds": 600,
+        "purify_on": 35,
+        "purify_off": 15
+      },
+      "map": {
+        "width": 15,
+        "height": 11,
+        "grid": [
+          "###############",
+          "#......#......#",
+          "#..XX..#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "#..X...########",
+          "#..X...#......#",
+          "#......#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "###############"
+        ],
+        "legend": {
+          "#": "wall",
+          ".": "floor",
+          "X": "obstacle",
+          "D": "door"
+        },
+        "rooms": [
+          {
+            "id": "living_room",
+            "name": "거실",
+            "bounds": [
+              1,
+              1,
+              6,
+              9
+            ],
+            "target": [
+              2,
+              4
+            ]
+          },
+          {
+            "id": "kitchen",
+            "name": "주방",
+            "bounds": [
+              8,
+              1,
+              13,
+              4
+            ],
+            "target": [
+              11,
+              3
+            ]
+          },
+          {
+            "id": "bedroom",
+            "name": "침실",
+            "bounds": [
+              8,
+              6,
+              13,
+              9
+            ],
+            "target": [
+              11,
+              8
+            ]
+          }
+        ],
+        "start": [
+          2,
+          4
+        ]
+      }
+    },
+    {
+      "run_id": "run_simulator_v2",
+      "scenario_day": 56,
+      "scenario": {
+        "rule_version": "pm25-v1.1",
+        "event_seed_version": "pm25-v1",
+        "partial_purification": "(1 - purification_rate) ** (seconds / 60)",
+        "seed": 100,
+        "day_index": 55,
+        "late_dinner": true,
+        "schedule_source": "generated",
+        "time_unit": "minute",
+        "pm25_unit": "µg/m³",
+        "initial_pm25": 10.0,
+        "natural_baseline": 10.0,
+        "natural_decay_rate": 0.01,
+        "purification_rate": 0.05,
+        "purification_floor": 5.0,
+        "activity_rates": {
+          "cooking": 3.0,
+          "cleaning": 2.0,
+          "bedding": 2.0
+        },
+        "events": [
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 524,
+            "end_minute": 534
+          },
+          {
+            "room": "bedroom",
+            "activity": "bedding",
+            "start_minute": 557,
+            "end_minute": 567
+          },
+          {
+            "room": "living_room",
+            "activity": "cleaning",
+            "start_minute": 922,
+            "end_minute": 927
+          },
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 1292,
+            "end_minute": 1305
+          }
+        ],
+        "tick_seconds": 10,
+        "measurement_interval_seconds": 600,
+        "purify_on": 35,
+        "purify_off": 15
+      },
+      "map": {
+        "width": 15,
+        "height": 11,
+        "grid": [
+          "###############",
+          "#......#......#",
+          "#..XX..#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "#..X...########",
+          "#..X...#......#",
+          "#......#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "###############"
+        ],
+        "legend": {
+          "#": "wall",
+          ".": "floor",
+          "X": "obstacle",
+          "D": "door"
+        },
+        "rooms": [
+          {
+            "id": "living_room",
+            "name": "거실",
+            "bounds": [
+              1,
+              1,
+              6,
+              9
+            ],
+            "target": [
+              2,
+              4
+            ]
+          },
+          {
+            "id": "kitchen",
+            "name": "주방",
+            "bounds": [
+              8,
+              1,
+              13,
+              4
+            ],
+            "target": [
+              11,
+              3
+            ]
+          },
+          {
+            "id": "bedroom",
+            "name": "침실",
+            "bounds": [
+              8,
+              6,
+              13,
+              9
+            ],
+            "target": [
+              11,
+              8
+            ]
+          }
+        ],
+        "start": [
+          2,
+          4
+        ]
+      }
+    },
+    {
+      "run_id": "run_simulator_v2",
+      "scenario_day": 57,
+      "scenario": {
+        "rule_version": "pm25-v1.1",
+        "event_seed_version": "pm25-v1",
+        "partial_purification": "(1 - purification_rate) ** (seconds / 60)",
+        "seed": 100,
+        "day_index": 56,
+        "late_dinner": true,
+        "schedule_source": "generated",
+        "time_unit": "minute",
+        "pm25_unit": "µg/m³",
+        "initial_pm25": 10.0,
+        "natural_baseline": 10.0,
+        "natural_decay_rate": 0.01,
+        "purification_rate": 0.05,
+        "purification_floor": 5.0,
+        "activity_rates": {
+          "cooking": 3.0,
+          "cleaning": 2.0,
+          "bedding": 2.0
+        },
+        "events": [
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 507,
+            "end_minute": 524
+          },
+          {
+            "room": "bedroom",
+            "activity": "bedding",
+            "start_minute": 543,
+            "end_minute": 552
+          },
+          {
+            "room": "living_room",
+            "activity": "cleaning",
+            "start_minute": 934,
+            "end_minute": 944
+          },
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 1249,
+            "end_minute": 1261
+          }
+        ],
+        "tick_seconds": 10,
+        "measurement_interval_seconds": 600,
+        "purify_on": 35,
+        "purify_off": 15
+      },
+      "map": {
+        "width": 15,
+        "height": 11,
+        "grid": [
+          "###############",
+          "#......#......#",
+          "#..XX..#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "#..X...########",
+          "#..X...#......#",
+          "#......#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "###############"
+        ],
+        "legend": {
+          "#": "wall",
+          ".": "floor",
+          "X": "obstacle",
+          "D": "door"
+        },
+        "rooms": [
+          {
+            "id": "living_room",
+            "name": "거실",
+            "bounds": [
+              1,
+              1,
+              6,
+              9
+            ],
+            "target": [
+              2,
+              4
+            ]
+          },
+          {
+            "id": "kitchen",
+            "name": "주방",
+            "bounds": [
+              8,
+              1,
+              13,
+              4
+            ],
+            "target": [
+              11,
+              3
+            ]
+          },
+          {
+            "id": "bedroom",
+            "name": "침실",
+            "bounds": [
+              8,
+              6,
+              13,
+              9
+            ],
+            "target": [
+              11,
+              8
+            ]
+          }
+        ],
+        "start": [
+          2,
+          4
+        ]
+      }
+    },
+    {
+      "run_id": "run_simulator_v2",
+      "scenario_day": 58,
+      "scenario": {
+        "rule_version": "pm25-v1.1",
+        "event_seed_version": "pm25-v1",
+        "partial_purification": "(1 - purification_rate) ** (seconds / 60)",
+        "seed": 100,
+        "day_index": 57,
+        "late_dinner": false,
+        "schedule_source": "generated",
+        "time_unit": "minute",
+        "pm25_unit": "µg/m³",
+        "initial_pm25": 10.0,
+        "natural_baseline": 10.0,
+        "natural_decay_rate": 0.01,
+        "purification_rate": 0.05,
+        "purification_floor": 5.0,
+        "activity_rates": {
+          "cooking": 3.0,
+          "cleaning": 2.0,
+          "bedding": 2.0
+        },
+        "events": [
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 430,
+            "end_minute": 445
+          },
+          {
+            "room": "bedroom",
+            "activity": "bedding",
+            "start_minute": 561,
+            "end_minute": 570
+          },
+          {
+            "room": "living_room",
+            "activity": "cleaning",
+            "start_minute": 992,
+            "end_minute": 1001
+          },
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 1122,
+            "end_minute": 1135
+          }
+        ],
+        "tick_seconds": 10,
+        "measurement_interval_seconds": 600,
+        "purify_on": 35,
+        "purify_off": 15
+      },
+      "map": {
+        "width": 15,
+        "height": 11,
+        "grid": [
+          "###############",
+          "#......#......#",
+          "#..XX..#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "#..X...########",
+          "#..X...#......#",
+          "#......#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "###############"
+        ],
+        "legend": {
+          "#": "wall",
+          ".": "floor",
+          "X": "obstacle",
+          "D": "door"
+        },
+        "rooms": [
+          {
+            "id": "living_room",
+            "name": "거실",
+            "bounds": [
+              1,
+              1,
+              6,
+              9
+            ],
+            "target": [
+              2,
+              4
+            ]
+          },
+          {
+            "id": "kitchen",
+            "name": "주방",
+            "bounds": [
+              8,
+              1,
+              13,
+              4
+            ],
+            "target": [
+              11,
+              3
+            ]
+          },
+          {
+            "id": "bedroom",
+            "name": "침실",
+            "bounds": [
+              8,
+              6,
+              13,
+              9
+            ],
+            "target": [
+              11,
+              8
+            ]
+          }
+        ],
+        "start": [
+          2,
+          4
+        ]
+      }
+    },
+    {
+      "run_id": "run_simulator_v2",
+      "scenario_day": 59,
+      "scenario": {
+        "rule_version": "pm25-v1.1",
+        "event_seed_version": "pm25-v1",
+        "partial_purification": "(1 - purification_rate) ** (seconds / 60)",
+        "seed": 100,
+        "day_index": 58,
+        "late_dinner": false,
+        "schedule_source": "generated",
+        "time_unit": "minute",
+        "pm25_unit": "µg/m³",
+        "initial_pm25": 10.0,
+        "natural_baseline": 10.0,
+        "natural_decay_rate": 0.01,
+        "purification_rate": 0.05,
+        "purification_floor": 5.0,
+        "activity_rates": {
+          "cooking": 3.0,
+          "cleaning": 2.0,
+          "bedding": 2.0
+        },
+        "events": [
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 434,
+            "end_minute": 446
+          },
+          {
+            "room": "bedroom",
+            "activity": "bedding",
+            "start_minute": 491,
+            "end_minute": 496
+          },
+          {
+            "room": "living_room",
+            "activity": "cleaning",
+            "start_minute": 973,
+            "end_minute": 981
+          },
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 1130,
+            "end_minute": 1145
+          }
+        ],
+        "tick_seconds": 10,
+        "measurement_interval_seconds": 600,
+        "purify_on": 35,
+        "purify_off": 15
+      },
+      "map": {
+        "width": 15,
+        "height": 11,
+        "grid": [
+          "###############",
+          "#......#......#",
+          "#..XX..#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "#..X...########",
+          "#..X...#......#",
+          "#......#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "###############"
+        ],
+        "legend": {
+          "#": "wall",
+          ".": "floor",
+          "X": "obstacle",
+          "D": "door"
+        },
+        "rooms": [
+          {
+            "id": "living_room",
+            "name": "거실",
+            "bounds": [
+              1,
+              1,
+              6,
+              9
+            ],
+            "target": [
+              2,
+              4
+            ]
+          },
+          {
+            "id": "kitchen",
+            "name": "주방",
+            "bounds": [
+              8,
+              1,
+              13,
+              4
+            ],
+            "target": [
+              11,
+              3
+            ]
+          },
+          {
+            "id": "bedroom",
+            "name": "침실",
+            "bounds": [
+              8,
+              6,
+              13,
+              9
+            ],
+            "target": [
+              11,
+              8
+            ]
+          }
+        ],
+        "start": [
+          2,
+          4
+        ]
+      }
+    },
+    {
+      "run_id": "run_simulator_v2",
+      "scenario_day": 60,
+      "scenario": {
+        "rule_version": "pm25-v1.1",
+        "event_seed_version": "pm25-v1",
+        "partial_purification": "(1 - purification_rate) ** (seconds / 60)",
+        "seed": 100,
+        "day_index": 59,
+        "late_dinner": false,
+        "schedule_source": "generated",
+        "time_unit": "minute",
+        "pm25_unit": "µg/m³",
+        "initial_pm25": 10.0,
+        "natural_baseline": 10.0,
+        "natural_decay_rate": 0.01,
+        "purification_rate": 0.05,
+        "purification_floor": 5.0,
+        "activity_rates": {
+          "cooking": 3.0,
+          "cleaning": 2.0,
+          "bedding": 2.0
+        },
+        "events": [
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 464,
+            "end_minute": 478
+          },
+          {
+            "room": "bedroom",
+            "activity": "bedding",
+            "start_minute": 557,
+            "end_minute": 566
+          },
+          {
+            "room": "living_room",
+            "activity": "cleaning",
+            "start_minute": 925,
+            "end_minute": 933
+          },
+          {
+            "room": "kitchen",
+            "activity": "cooking",
+            "start_minute": 1177,
+            "end_minute": 1194
+          }
+        ],
+        "tick_seconds": 10,
+        "measurement_interval_seconds": 600,
+        "purify_on": 35,
+        "purify_off": 15
+      },
+      "map": {
+        "width": 15,
+        "height": 11,
+        "grid": [
+          "###############",
+          "#......#......#",
+          "#..XX..#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "#..X...########",
+          "#..X...#......#",
+          "#......#..XX..#",
+          "#......D......#",
+          "#......#......#",
+          "###############"
+        ],
+        "legend": {
+          "#": "wall",
+          ".": "floor",
+          "X": "obstacle",
+          "D": "door"
+        },
+        "rooms": [
+          {
+            "id": "living_room",
+            "name": "거실",
+            "bounds": [
+              1,
+              1,
+              6,
+              9
+            ],
+            "target": [
+              2,
+              4
+            ]
+          },
+          {
+            "id": "kitchen",
+            "name": "주방",
+            "bounds": [
+              8,
+              1,
+              13,
+              4
+            ],
+            "target": [
+              11,
+              3
+            ]
+          },
+          {
+            "id": "bedroom",
+            "name": "침실",
+            "bounds": [
+              8,
+              6,
+              13,
+              9
+            ],
+            "target": [
+              11,
+              8
+            ]
+          }
+        ],
+        "start": [
+          2,
+          4
+        ]
+      }
+    }
+  ]
 }

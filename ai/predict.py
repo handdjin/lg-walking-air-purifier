@@ -82,9 +82,11 @@ class Predictor:
             )
 
             valid_time = (
-                type(measured) is int
+                not isinstance(measured, bool)
+                and isinstance(measured, (int, float))
+                and math.isfinite(measured)
                 and 0 <= measured <= now_minute
-            )
+                )
 
             if not valid_value or not valid_time:
                 raise ValueError(
@@ -118,6 +120,48 @@ class Predictor:
             "status": status,
             "predictions": dict(zip(ROOMS, values)),
         }
+
+
+def predict_from_simulator(predictor, simulator):
+    """Convert simulator observations and request a forecast."""
+    state = simulator.get_state()
+    seconds = state["simulation_time_seconds"]
+
+    if state["finished"]:
+        return {
+            "status": "simulation_finished",
+            "predictions": dict.fromkeys(ROOMS),
+        }
+
+    # Request forecasts at 10-minute boundaries.
+    if seconds % 600 != 0:
+        return {
+            "status": "not_prediction_time",
+            "predictions": dict.fromkeys(ROOMS),
+        }
+
+    observations = {}
+
+    for room in ROOMS:
+        reading = state["observations"].get(room)
+
+        if (
+            reading is None
+            or reading["pm25"] is None
+            or reading["measured_at_seconds"] is None
+        ):
+            observations[room] = None
+        else:
+            observations[room] = {
+                "pm25": reading["pm25"],
+                "measured_minute":
+                    reading["measured_at_seconds"] / 60,
+            }
+
+    return predictor.predict_rooms(
+        now_minute=seconds // 60,
+        observations=observations,
+    )
 
 
 if __name__ == "__main__":

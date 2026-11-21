@@ -127,6 +127,22 @@ class Simulator:
             "finished": self._seconds >= MINUTES_PER_DAY * 60,
             "observations": observations,
         }
+    
+    def estimate_travel_seconds(self, room):
+        """Estimate travel time using the same path planner as move_to()."""
+        if not isinstance(room, str) or room not in self._map.rooms:
+            raise ValueError(f"Unknown room: {room!r}")
+
+        if self._path:
+            raise ValueError("Wait until the current route is complete.")
+
+        path = find_path(
+            self._map,
+            self._position,
+            self._map.rooms[room].target,
+        )
+
+        return (len(path) - 1) * self._tick_seconds
 
     def move_to(self, room: str):
         """경로를 예약한다. 도달 불가·잘못된 요청은 현재 상태를 보존한다."""
