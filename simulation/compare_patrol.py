@@ -1,15 +1,31 @@
 """Compare automatic control with fixed departures on the same simulated day."""
 import argparse
 
-from ai.predict import Predictor
-from backend.runtime import SimulationRuntime
+from ai.predict import Predictor, predict_from_simulator
 from simulation import Simulator
+from simulation.controller import decide_and_move
 from simulation.environment import ROOM_NAMES, generate_daily_events
 from simulation.simulator import PURIFY_ON
 
 
 PATROL_ROOMS = ("living_room", "kitchen", "bedroom")
 DEPARTURE_INTERVAL_SECONDS = 20 * 60
+
+
+def ai_tick(simulator, predictor):
+    """Follow the server's initial patrol and ten-minute decision schedule."""
+    state = simulator.get_state()
+    if not state["remaining_steps"]:
+        for room in PATROL_ROOMS:
+            if state["observations"][room]["pm25"] is None:
+                state = simulator.move_to(room)
+                break
+
+    if state["simulation_time_seconds"] % 600 == 0:
+        forecast = predict_from_simulator(predictor, simulator)
+        if forecast["status"] == "ok" and not state["remaining_steps"]:
+            decide_and_move(simulator, forecast["predictions"])
+    return simulator.step()
 
 
 def fixed_patrol_tick(simulator):
@@ -46,16 +62,16 @@ def main():
     options = dict(seed=args.seed, day_index=args.day_index, events=events)
     auto = Simulator(**options)
     patrol = Simulator(**options)
-    runtime = SimulationRuntime(auto, Predictor())
-    auto_minutes, auto_trips = evaluate_day(auto, runtime.tick)
+    predictor = Predictor()
+    auto_minutes, auto_trips = evaluate_day(auto, lambda: ai_tick(auto, predictor))
     patrol_minutes, patrol_trips = evaluate_day(patrol, lambda: fixed_patrol_tick(patrol))
 
-    print(f"seed={args.seed}, day_index={args.day_index}, 24 simulated hours")
-    print("| Metric | AI control | Fixed 20-minute patrol |")
+    print(f"seed={args.seed}, day_index={args.day_index}, 가상 시간 24시간")
+    print("| 평가 항목 | AI 자동 이동 | 20분 고정 순찰 |")
     print("| --- | ---: | ---: |")
     for room, name in ROOM_NAMES.items():
-        print(f"| {name} PM2.5 above {PURIFY_ON} (minutes) | {auto_minutes[room]} | {patrol_minutes[room]} |")
-    print(f"| Completed trips (count) | {auto_trips} | {patrol_trips} |")
+        print(f"| {name} PM2.5 {PURIFY_ON} 초과 (분) | {auto_minutes[room]} | {patrol_minutes[room]} |")
+    print(f"| 이동 완료 (회) | {auto_trips} | {patrol_trips} |")
 
 
 if __name__ == "__main__":
