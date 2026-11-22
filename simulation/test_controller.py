@@ -1,4 +1,4 @@
-"""예측 입력·경로 비용·판단의 상태 보존과 실제 이동 연결 검증."""
+"""Test forecast inputs, travel costs, state preservation, and movement after selection."""
 
 import json
 import unittest
@@ -28,7 +28,7 @@ class ControllerTests(unittest.TestCase):
         self.assertEqual(state['current_room'], 'kitchen')
         self.assertEqual(state['simulation_time_seconds'], 100)
         self.assertEqual(state['observations']['kitchen']['measured_at_seconds'], 100)
-        self.assertFalse(state['is_purifying'])  # 높은 예측만으로 정화하지 않음
+        self.assertFalse(state['is_purifying'])  # A high forecast alone does not start purification
 
     def test_changed_predictions_change_destination(self):
         sim = Simulator(events=())

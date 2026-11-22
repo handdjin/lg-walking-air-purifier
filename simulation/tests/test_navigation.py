@@ -1,4 +1,4 @@
-"""표준 unittest로 경로의 최적성·안전성과 외부 연동 계약을 검증한다."""
+"""Use unittest to check path optimality, safety, and the external interface."""
 
 from collections import deque
 import json
@@ -10,7 +10,7 @@ from simulation.pathfinding import NoPathError, find_path
 
 
 def bfs_distances(house, start):
-    """A*와 독립적인 너비 우선 탐색으로 최소 이동 횟수를 구한다."""
+    """A*-independent breadth-first search gives the minimum number of steps."""
     distances = {start: 0}
     queue = deque([start])
     while queue:
@@ -65,11 +65,11 @@ class MovementTests(unittest.TestCase):
         for room in ("kitchen", "bedroom", "living_room"):
             before = sim.get_state()["position"]
             state = sim.move_to(room)
-            self.assertEqual(state["position"], before)  # 예약은 이동하지 않는다.
+            self.assertEqual(state["position"], before)  # Reserving a route does not move the purifier.
             seen_door = False
             count = state["remaining_steps"]
             for i in range(count):
-                self.assertEqual(sim.get_state(), state)  # 조회는 움직이지 않는다.
+                self.assertEqual(sim.get_state(), state)  # Reading state does not move the purifier.
                 state = sim.step()
                 self.assertEqual(sum(abs(a-b) for a, b in zip(before, state["position"])), 1)
                 self.assertEqual(state["remaining_steps"], count-i-1)

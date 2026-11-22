@@ -1,4 +1,4 @@
-"""이동·가상 시간·관측·정화를 하나의 순서로 진행하는 시뮬레이터."""
+"""Coordinate movement, time, measurements, and purification in a fixed update order."""
 
 from collections import deque
 from copy import deepcopy
@@ -15,18 +15,18 @@ PURIFY_OFF = 15
 
 
 class Simulator:
-    """처음에는 일시정지 상태. start() 후 step()마다 가상 시간이 진행된다.
+    """Start paused. After start(), each step() advances simulated time.
 
-    외부 서버가 step() 호출 주기를 관리한다. 자체 스레드나 실시간 타이머는 없다.
+    The server determines when to call step(). The simulator has no thread or real-time timer.
     """
 
     def __init__(self, house_map=None, *, seed=0, day_index=0,
                  late_dinner=False, events=None, tick_seconds=TICK_SECONDS):
         self._map = house_map if house_map is not None else load_house_map()
         if set(self._map.rooms) != set(ROOM_NAMES):
-            raise ValueError("지도와 공기질 환경의 방 코드가 일치해야 합니다.")
+            raise ValueError("Room IDs in the map and air quality environment must match.")
         if type(tick_seconds) is not int or tick_seconds <= 0 or 60 % tick_seconds:
-            raise ValueError("tick_seconds는 60의 양의 정수 약수여야 합니다.")
+            raise ValueError("tick_seconds must be a positive integer divisor of 60.")
         self._tick_seconds = tick_seconds
         self._environment_options = {
             "seed": seed, "day_index": day_index, "late_dinner": late_dinner,
@@ -35,7 +35,7 @@ class Simulator:
         self.reset()
 
     def reset(self):
-        """기존 위치·목적지·경로 초기화를 유지하고 시간·환경·관측도 초기화한다."""
+        """Reset position, destination, route, time, environment, and observations."""
         environment = AirEnvironment(**self._environment_options)
         self._position = self._map.start
         self._destination = None
@@ -44,7 +44,7 @@ class Simulator:
         self._seconds = 0
         self._running = False
         self._purifying = False
-        self._exposure = {}  # 이번 1분 중 방별로 실제 정화한 가상 초
+        self._exposure = {}  # Simulated seconds spent purifying each room during the current minute
         self._observations = {room: None for room in self._map.rooms}
         self._history = []
         self._record("reset")
@@ -52,16 +52,16 @@ class Simulator:
         return self.get_state()
 
     def start(self):
-        """이동·대기·정화 상태를 유지하며 가상 시간 진행을 허용한다."""
+        """Enable time progression while preserving movement, idle, or purification state."""
         if self._seconds >= MINUTES_PER_DAY * 60:
-            raise ValueError("하루가 종료되었습니다. reset() 후 시작하세요.")
+            raise ValueError("The day has ended. Call reset() before starting.")
         if not self._running:
             self._running = True
             self._record("start")
         return self.get_state()
 
     def pause(self):
-        """위치·경로·정화 설정을 보존하고 가상 시간 진행을 멈춘다."""
+        """Pause time while preserving position, route, and purification settings."""
         if self._running:
             self._running = False
             self._record("pause")
@@ -77,13 +77,13 @@ class Simulator:
                          room=self._map.room_at(self._position), reason=reason)
 
     def _measure_current_room(self, reason):
-        """목적지 도착 또는 정지 중에만 호출. 방 코드는 실제 좌표에서 얻는다."""
+        """Measure only on arrival or while stationary, using the room at the actual coordinates."""
         room = self._map.room_at(self._position)
         if room is None or self._path:
             return
         previous = self._observations[room]
         if previous and previous["measured_at_seconds"] == self._seconds:
-            return  # 같은 방·시각의 도착 및 정기 측정 중복 방지
+            return  # Avoid duplicate arrival and periodic readings at the same time in the same room
         sample = self._environment.sample_current_room(room)
         observation = {
             "pm25": sample["pm25"],
@@ -101,7 +101,7 @@ class Simulator:
         return self._map.to_dict()
 
     def get_state(self):
-        """앱·정책용 상태. 미관측 방의 실제 농도와 미래 사건은 포함하지 않는다."""
+        """Return app and policy state without hidden concentrations or future events."""
         room = self._map.room_at(self._position)
         observations = {}
         for room_id, observation in self._observations.items():
@@ -145,13 +145,13 @@ class Simulator:
         return (len(path) - 1) * self._tick_seconds
 
     def move_to(self, room: str):
-        """경로를 예약한다. 도달 불가·잘못된 요청은 현재 상태를 보존한다."""
+        """Reserve a route. Invalid and unreachable destinations preserve the current state."""
         if not isinstance(room, str) or room not in self._map.rooms:
-            raise ValueError(f"올바르지 않은 방 코드: {room!r}")
+            raise ValueError(f"Invalid room ID: {room!r}")
         if self._seconds >= MINUTES_PER_DAY * 60:
-            raise ValueError("하루가 종료되었습니다. reset() 후 이동하세요.")
+            raise ValueError("The day has ended. Call reset() before moving.")
         path = find_path(self._map, self._position, self._map.rooms[room].target)
-        # 경로 탐색 성공 전에는 기존 이동·정화 상태를 변경하지 않는다.
+        # Preserve movement and purification state until route planning succeeds.
         if path[1:]:
             self._set_purifying(False, "move_requested")
         self._destination = room
@@ -162,11 +162,11 @@ class Simulator:
         return self.get_state()
 
     def step(self):
-        """실행 중일 때만 한 tick 진행한다. 도착 후에도 환경 시간은 계속 흐른다.
+        """Advance one tick while running. Environmental time continues after arrival.
 
-        순서: 지난 구간 정화 시간 집계 → 분 경계의 환경 갱신 → 한 칸 이동
-        → 시각 갱신 → 도착/정기 측정 → 정화 판단. 도착 직전 이동 구간은
-        새 방의 정화 시간으로 계산하지 않는다.
+        Order: accumulate purification time, update the environment at minute boundaries, move one cell,
+        update the clock, measure on arrival or when due, then decide whether to purify.
+        The final travel interval does not count as purification in the destination room.
         """
         if not self._running:
             return self.get_state()
@@ -197,15 +197,15 @@ class Simulator:
         return self.get_state()
 
     def get_history(self):
-        """실제로 발생한 명령·측정 이력의 사본을 반환한다."""
+        """Return a copy of the recorded commands and measurement history."""
         return deepcopy(self._history)
 
     def get_ground_truth(self):
-        """학습 정답·평가 전용. 일반 앱 상태 API에는 전달하지 않는다."""
+        """Return ground truth for labels and evaluation only. Exclude it from the public app state."""
         return self._environment.get_ground_truth()
 
     def get_scenario(self):
-        """재현용 환경 설정. 미래 사건이 포함되어 앱·예측 입력으로 사용 금지."""
+        """Return settings for reproducibility. Future events must stay out of app and forecast inputs."""
         return {**self._environment.get_scenario(), "tick_seconds": self._tick_seconds,
                 "measurement_interval_seconds": MEASUREMENT_INTERVAL_SECONDS,
                 "purify_on": PURIFY_ON, "purify_off": PURIFY_OFF}

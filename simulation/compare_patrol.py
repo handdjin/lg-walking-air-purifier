@@ -50,12 +50,12 @@ def main():
     auto_minutes, auto_trips = evaluate_day(auto, runtime.tick)
     patrol_minutes, patrol_trips = evaluate_day(patrol, lambda: fixed_patrol_tick(patrol))
 
-    print(f"seed={args.seed}, day_index={args.day_index}, 가상 시간 24시간")
-    print("| 평가 항목 | AI 자동 이동 | 20분 고정 순찰 |")
+    print(f"seed={args.seed}, day_index={args.day_index}, 24 simulated hours")
+    print("| Metric | AI control | Fixed 20-minute patrol |")
     print("| --- | ---: | ---: |")
     for room, name in ROOM_NAMES.items():
-        print(f"| {name} PM2.5 {PURIFY_ON} 초과 (분) | {auto_minutes[room]} | {patrol_minutes[room]} |")
-    print(f"| 이동 완료 (회) | {auto_trips} | {patrol_trips} |")
+        print(f"| {name} PM2.5 above {PURIFY_ON} (minutes) | {auto_minutes[room]} | {patrol_minutes[room]} |")
+    print(f"| Completed trips (count) | {auto_trips} | {patrol_trips} |")
 
 
 if __name__ == "__main__":

@@ -1,19 +1,19 @@
-"""python3 -m simulation.integration_demo: 이동·환경·자동 정화 통합 비교."""
+"""python3 -m simulation.integration_demo: compare movement, air quality, and automatic purification."""
 
 from . import Simulator
 from .environment import PollutionEvent
 
 
 def main():
-    # 빠른 확인용 사건이다. 기본 하루 활동 시간표는 변경하지 않는다.
+    # Use an event for a quick demonstration while preserving the default daily schedule.
     events = (PollutionEvent("kitchen", "cooking", 0, 20),)
     scenarios = [Simulator(events=()), Simulator(events=events), Simulator(events=events)]
     for simulator in scenarios:
         simulator.start()
     cleaned = scenarios[2]
-    print("시연: 00:00~00:20 주방 요리, 00:10에 거실에서 주방으로 출발")
-    print("아래 농도는 검증용 내부 정답입니다. 앱에 표시할 관측값과 다릅니다.")
-    print("가상 초 | 오염 없음 | 요리/방문 없음 | 요리/방문 정화 | 청정기 상태")
+    print("Demo: cooking in the kitchen from 00:00 to 00:20, leaving the living room for the kitchen at 00:10")
+    print("These concentrations are internal ground truth for verification. The app displays actual sensor readings.")
+    print("Simulated seconds | No pollution | Cooking, no visit | Cooking, visit and purify | Purifier status")
     for seconds in range(0, 3601, 10):
         if seconds == 600:
             cleaned.move_to("kitchen")
@@ -24,16 +24,16 @@ def main():
         if seconds < 3600:
             for simulator in scenarios:
                 simulator.step()
-    print("\n실제 측정·자동 정화 기록:")
+    print("\nMeasurement and automatic purification history:")
     for entry in cleaned.get_history():
         if entry["type"] in ("measurement", "purification_on", "purification_off"):
             print(entry)
     paused = cleaned.pause()
     assert cleaned.step() == paused
-    print("\n일시정지 확인: step()을 호출해도 위치·시간·공기질이 유지됩니다.")
+    print("\nPause check: calling step() preserves position, time, and air quality.")
     reset = cleaned.reset()
     assert reset["simulation_time_seconds"] == 0 and reset["destination"] is None
-    print("초기화 확인:", reset)
+    print("Reset check:", reset)
 
 
 if __name__ == "__main__":

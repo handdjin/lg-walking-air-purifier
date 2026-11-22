@@ -1,4 +1,4 @@
-"""실제 이동과 시간·관측·정화 제어를 함께 검증한다."""
+"""Test movement together with time, observations, and purification control."""
 
 import json
 import unittest
@@ -33,7 +33,7 @@ class IntegratedTests(unittest.TestCase):
         self.assertEqual(sim.step(), state)
         sim.move_to("kitchen")
         before = sim.get_state()
-        self.assertEqual(sim.step(), before)  # 경로만 예약해도 시작 전에는 안 움직인다.
+        self.assertEqual(sim.step(), before)  # Reserving a route does not start movement before start().
         sim.start()
         history = sim.get_history()
         sim.start()
@@ -72,7 +72,7 @@ class IntegratedTests(unittest.TestCase):
         self.assertEqual(observed["measured_at_seconds"], 100)
         self.assertEqual(observed["source_minute"], 1)
         self.assertEqual(state["observations"]["living_room"]["age_seconds"], 100)
-        # 분 중간에도 측정 시각과 환경의 마지막 갱신 시각을 구분한다.
+        # Distinguish measurement time from the last environment update within a minute.
         run_seconds(sim, 590)
         self.assertEqual(sim.get_state()["observations"]["kitchen"]["measured_at_seconds"], 100)
         state = sim.step()
@@ -114,7 +114,7 @@ class IntegratedTests(unittest.TestCase):
         sim = Simulator(events=[PollutionEvent("living_room", "cleaning", 0, 20)])
         sim.start()
         run_seconds(sim, 600)
-        self.assertFalse(sim.get_state()["is_purifying"])  # 10분 측정은 35 미만
+        self.assertFalse(sim.get_state()["is_purifying"])  # 10-minute reading is below 35
         state = run_seconds(sim, 600)
         self.assertGreaterEqual(state["observations"]["living_room"]["pm25"], 35)
         self.assertEqual(state["status"], "purifying")
@@ -123,7 +123,7 @@ class IntegratedTests(unittest.TestCase):
         run_seconds(sim, 60)
         self.assertAlmostEqual(sim.get_ground_truth()["pm25"]["living_room"],
                                calculate_pm25(before, purifying=True))
-        # 실제 농도가 내려가도 다음 측정 전에는 판단을 바꾸지 않는다.
+        # A drop in the underlying concentration does not change the decision until the next measurement.
         state = run_seconds(sim, 9 * 60)
         self.assertGreater(state["observations"]["living_room"]["pm25"], 15)
         self.assertTrue(state["is_purifying"])
@@ -137,21 +137,21 @@ class IntegratedTests(unittest.TestCase):
         sim, reference = Simulator(events=events), AirEnvironment(events=events)
         sim.start()
         run_seconds(sim, 600)
-        state = arrive(sim, "kitchen")  # 700초에 도착. 환경은 660초까지 갱신된 상태.
+        state = arrive(sim, "kitchen")  # 700 s arrival. The environment was last updated at 660 s.
         self.assertTrue(state["is_purifying"])
         for _ in range(11):
             reference.advance()
         self.assertEqual(sim.get_ground_truth(), reference.get_ground_truth())
-        run_seconds(sim, 20)  # 700~720초의 20초 동안만 정화
+        run_seconds(sim, 20)  # 700~720 s: only 20 seconds of purification
         reference.advance(purification_seconds={"kitchen": 20})
         self.assertEqual(sim.get_ground_truth(), reference.get_ground_truth())
-        sim.step()  # 720~730초의 10초 정화
+        sim.step()  # 720~730 s: 10 seconds of purification
         sim.move_to("bedroom")
         self.assertFalse(sim.get_state()["is_purifying"])
-        run_seconds(sim, 50)  # 730~780초는 이동만
+        run_seconds(sim, 50)  # 730~780 s: travel only
         reference.advance(purification_seconds={"kitchen": 10})
         self.assertEqual(sim.get_ground_truth(), reference.get_ground_truth())
-        run_seconds(sim, 60)  # 780~840초도 이동만
+        run_seconds(sim, 60)  # 780~840 s: travel only
         reference.advance()
         self.assertEqual(sim.get_ground_truth(), reference.get_ground_truth())
 
@@ -160,10 +160,10 @@ class IntegratedTests(unittest.TestCase):
         sim = Simulator(events=events)
         initial, scenario = sim.get_state(), sim.get_scenario()
         sim.start()
-        run_seconds(sim, 1210)  # 정화 시작 후 10초
+        run_seconds(sim, 1210)  # Ten seconds after purification starts
         sim.pause()
         self.assertFalse(sim.get_state()["is_purifying"])
-        self.assertEqual(sim.get_state()["status"], "purifying")  # 재개할 동작 보존
+        self.assertEqual(sim.get_state()["status"], "purifying")  # Preserve the action to resume
         truth = sim.get_ground_truth()
         run_seconds(sim, 600)
         self.assertEqual(sim.get_ground_truth(), truth)

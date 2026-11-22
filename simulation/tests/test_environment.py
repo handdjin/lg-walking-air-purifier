@@ -1,4 +1,4 @@
-"""수식, 시간 경계, 재현성, 관측과 정답의 분리를 검증한다."""
+"""Test formulas, time boundaries, reproducibility, and separation of observations from ground truth."""
 
 import json
 import random
@@ -13,7 +13,7 @@ class FormulaTests(unittest.TestCase):
     def test_document_examples_and_order(self):
         self.assertAlmostEqual(calculate_pm25(30), 29.8)
         self.assertAlmostEqual(calculate_pm25(30, purifying=True), 28.31)
-        # 20 + 3 = 23, 자연 감소 후 22.87, 정화 후 21.7265
+        # 20 + 3 = 23, natural decay gives 22.87, then purification gives 21.7265
         self.assertAlmostEqual(calculate_pm25(20, 3, True), 21.7265)
 
     def test_baseline_floor_and_no_instant_cleanup(self):
@@ -95,13 +95,13 @@ class ScheduleTests(unittest.TestCase):
 class EnvironmentTests(unittest.TestCase):
     def test_event_boundaries_and_time_meaning(self):
         env = AirEnvironment(events=[PollutionEvent("kitchen", "cooking", 1, 3)])
-        self.assertEqual(env.advance(), 1)  # [0,1): 활동 전
+        self.assertEqual(env.advance(), 1)  # [0,1): before activity
         self.assertEqual(env.get_ground_truth()["pm25"]["kitchen"], 10)
-        env.advance()  # [1,2): 첫 증가
+        env.advance()  # [1,2): first increase
         self.assertAlmostEqual(env.sample_current_room("kitchen")["pm25"], 12.97)
-        env.advance()  # [2,3): 마지막 증가
+        env.advance()  # [2,3): final increase
         self.assertAlmostEqual(env.sample_current_room("kitchen")["pm25"], 15.9103)
-        env.advance()  # [3,4): 종료 이후 자연 감소만
+        env.advance()  # [3,4): only natural decay after the event ends
         self.assertAlmostEqual(env.sample_current_room("kitchen")["pm25"], 15.851197)
         self.assertEqual(env.get_ground_truth()["pm25"]["bedroom"], 10)
 
@@ -110,7 +110,7 @@ class EnvironmentTests(unittest.TestCase):
         env.advance(purifying_room="kitchen")
         values = env.get_ground_truth()["pm25"]
         self.assertEqual(values, {"living_room": 10, "kitchen": 9.5, "bedroom": 10})
-        env.advance()  # None: 정화하지 않음, 10 미만은 자연 감소 없음
+        env.advance()  # None: no purification and no natural decay below 10
         self.assertEqual(env.get_ground_truth()["pm25"], values)
         env.advance(purifying_room="bedroom")
         self.assertEqual(env.get_ground_truth()["pm25"]["bedroom"], 9.5)

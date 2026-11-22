@@ -1,10 +1,10 @@
-# 공기청정기 이동 및 공기질 시뮬레이션
+# Air Purifier Navigation and Air Quality Simulation
 
-거실·주방·침실로 구성된 가상 주거 공간에서 이동, 가상 시간, 공기질 변화, 측정 및 자동 정화를 함께 처리하는 Python 모듈입니다. Python 표준 라이브러리만 사용합니다. 수치와 정화 기준은 프로젝트의 가상 환경 가정이며 실제 기기 성능이나 건강 기준을 나타내지 않습니다.
+This Python package simulates a mobile air purifier in a home with a living room, kitchen, and bedroom. It tracks movement, simulated time, air quality, measurements, and automatic purification. The simulation core uses the Python standard library. Concentrations and thresholds are simulation assumptions rather than device performance ratings or health standards.
 
-## 실행
+## Running the simulation
 
-`simulation/`을 포함한 프로젝트 루트에서 실행합니다.
+Run these commands from the project root, which contains the `simulation/` directory.
 
 ```sh
 python3 -m simulation.demo
@@ -14,227 +14,227 @@ python3 -m simulation.controller_demo
 python3 -m unittest discover -s simulation/tests -v
 ```
 
-- `demo`: 거실 → 주방 → 침실 → 거실 이동을 지도와 함께 출력합니다. `--delay 0.2`는 출력 사이 실제 대기 시간을 지정합니다.
-- `integration_demo`: 오염 없음, 주방 요리, 주방 요리 후 방문·정화를 비교하고 측정·정화 기록과 일시정지·초기화를 확인합니다.
-- `environment_demo`: 공통 수식과 활동 시간표 및 정화 효과를 따로 확인합니다.
-- `controller_demo`: 예시 예측값으로 목적지 선택과 이동·대기 동작을 확인합니다.
-- 테스트: 경로, 환경 수식, 시간 경계, 관측 제한, 자동 정화, 목적지 선택 및 재현성을 검증합니다.
+- `demo`: Shows the purifier moving from the living room to the kitchen, bedroom, and back to the living room. Use `--delay 0.2` to wait 0.2 real seconds between frames.
+- `integration_demo`: Compares three scenarios: no pollution, cooking without a visit, and cooking with a purifier visit. Prints measurements and purification events and demonstrates pause and reset.
+- `environment_demo`: Shows the air quality formula, activity schedule, and effect of purification in isolation.
+- `controller_demo`: Uses sample forecasts to demonstrate destination selection, travel, and waiting.
+- The tests cover navigation, environmental calculations, time boundaries, observation limits, automatic purification, destination selection, and reproducibility.
 
-## 파일 구성
+## Files
 
-| 파일 | 역할 |
+| File | Purpose |
 |---|---|
-| `house_map.json` | 방·벽·문·장애물·시작점·도착점 정의 |
-| `house_map.py` | 지도 검사와 좌표의 방 조회 |
-| `pathfinding.py` | A* 최단 경로 탐색 |
-| `simulator.py` | 이동·시계·측정·자동 정화·시작·정지·초기화 통합 |
-| `environment.py` | 데이터 생성기에서도 사용할 수 있는 공통 공기질 수식과 활동 시간표 |
-| `controller.py` | 예측 공기질과 이동 시간을 이용한 목적지 선택 |
-| `controller_demo.py` | 예시 예측값 기반 이동·대기 시연 |
-| `__init__.py` | `Simulator` 공개 인터페이스 |
-| `demo.py` | 지도와 이동 시연 |
-| `integration_demo.py` | 통합 동작과 비교 로그 시연 |
-| `environment_demo.py` | 환경 계산 단독 시연 |
-| `tests/test_navigation.py` | 지도와 최단 경로·이동 검사 |
-| `tests/test_environment.py` | 환경 수식·활동·재현성 검사 |
-| `tests/test_integration.py` | 시간·제어·관측·정화 연결 검사 |
-| `tests/test_controller.py` | 목적지 선택·예외 처리·이동 연결 검사 |
+| `house_map.json` | Defines rooms, walls, doors, obstacles, start position, and target cells |
+| `house_map.py` | Validates the map and identifies the room at a coordinate |
+| `pathfinding.py` | A* shortest-path search |
+| `simulator.py` | Coordinates movement, time, measurements, purification, start, pause, and reset |
+| `environment.py` | Provides air quality calculations and activity schedules for use by the simulator and data generator |
+| `controller.py` | Selects a destination using predicted air quality and travel time |
+| `controller_demo.py` | Demonstrates movement and waiting using sample forecasts |
+| `__init__.py` | `Simulator` public interface |
+| `demo.py` | Demonstrates the map and navigation |
+| `integration_demo.py` | Shows integrated behavior and comparison logs |
+| `environment_demo.py` | Demonstrates environmental calculations in isolation |
+| `tests/test_navigation.py` | Tests the map, shortest paths, and movement |
+| `tests/test_environment.py` | Tests air quality calculations, activities, and reproducibility |
+| `tests/test_integration.py` | Tests interactions between time, control, measurements, and purification |
+| `tests/test_controller.py` | Tests destination selection, error handling, and movement |
 
-## 기본 사용법
+## Basic usage
 
 ```python
 from simulation import Simulator
 
 sim = Simulator(seed=42)
-sim.move_to("kitchen")  # 목적지만 예약하며 아직 움직이지 않음
-sim.start()             # 가상 시간 진행 허용
+sim.move_to("kitchen")  # Reserve a route without moving yet
+sim.start()             # Enable simulated time
 while sim.get_state()["remaining_steps"]:
-    sim.step()          # 한 칸 이동, 가상 10초 경과
+    sim.step()          # Move one cell and advance ten simulated seconds
 
 print(sim.get_state())
-sim.step()              # 도착 후에도 대기/정화하며 가상 시간이 흐름
-sim.pause()             # 위치·경로·시간을 보존한 채 멈춤
-sim.start()             # 이어서 진행
-sim.reset()             # 처음 위치·00:00·초기 공기질로 복원, 일시정지 상태
+sim.step()              # Time continues while waiting or purifying after arrival
+sim.pause()             # Pause and preserve position, route, and time
+sim.start()             # Resume
+sim.reset()             # Restore the start position, midnight, and initial air quality, then remain paused
 ```
 
-이 반복문은 빠른 검증용입니다. 앱에서는 서버 또는 앱의 단일 진행 루프가 일정한 실제 간격으로 `step()`을 한 번씩 호출해야 이동 과정이 보입니다. 모듈 자체에는 실시간 타이머가 없습니다.
+This loop is useful for a quick check. To display movement in the app, have a single server or app loop call `step()` at regular real-time intervals. The simulator has no real-time timer of its own.
 
-## 시간과 처리 순서
+## Time and update order
 
-- 생성 및 초기화 직후에는 일시정지 상태입니다. **반드시 `start()` 후 진행합니다.**
-- 기본 `step()` 한 번은 가상 10초이며 이동 중에는 한 칸을 이동합니다.
-- 경로가 없어도 실행 중이면 시간이 흐릅니다. 환경은 가상 1분마다 갱신됩니다.
-- 일시정지 중 `step()`은 상태를 바꾸지 않습니다. `move_to()`는 일시정지 중에도 경로를 예약할 수 있습니다.
-- 실제 호출 간격과 가상 시간은 별개입니다. 실제 0.7초마다 호출하면 실제 0.7초에 가상 10초가 진행됩니다.
-- 가상 24:00에 자동 정지합니다. 다시 실행하려면 `reset()`이 필요합니다. 여러 날의 데이터 생성은 날짜마다 새 환경을 생성합니다.
+- The simulator starts paused after construction or reset. **Call `start()` before stepping.**
+- By default, each `step()` advances ten simulated seconds and moves one cell if a route is active.
+- Time continues while running, even without a route. The environment updates every simulated minute.
+- While paused, `step()` preserves the state. `move_to()` can still reserve a route.
+- The real-time call interval is independent of simulated time. Calling `step()` every 0.7 real seconds advances ten simulated seconds per call.
+- The simulator stops at 24:00. Call `reset()` to run it again. For multi-day data generation, create a new environment for each day.
 
-각 단계는 다음 순서입니다.
+Each step performs the following operations in order.
 
-1. 지난 10초 동안 정지해서 정화한 방과 시간을 집계합니다. 이동 구간에는 정화하지 않습니다.
-2. 분 경계라면 모든 방에 오염 증가 → 자연 감소 → 집계한 정화를 적용합니다.
-3. 경로가 있으면 한 칸 이동하고 가상 시각을 갱신합니다.
-4. 도착 또는 정기 측정 조건을 확인하고 현재 방을 측정합니다.
-5. 측정값으로 다음 구간의 정화 여부를 결정합니다.
+1. Record the time spent purifying in each room over the previous ten seconds. Travel contributes no purification time.
+2. At a minute boundary, apply emissions, natural decay, and accumulated purification to each room, in that order.
+3. Move one cell if a route is active and update the clock.
+4. Take a reading in the current room if the purifier has arrived or a periodic measurement is due.
+5. Use the reading to decide whether to purify during the next interval.
 
-분 중간에 도착하면 가장 최근에 계산된 농도를 측정합니다. 예를 들어 00:11:40에 도착하면 측정 시각은 700초, 농도의 기준 시각인 `source_minute`는 11입니다. 환경 계산은 분 단위 근사이며 매초 농도를 계산하지 않습니다.
+An arrival between minute boundaries samples the most recently calculated concentration. For an arrival at 00:11:40, the measurement timestamp is 700 seconds and its `source_minute` is 11. The environment approximates concentration at one-minute intervals.
 
-## 관측과 정화
+## Measurements and purification
 
-- 초기 위치의 방, 목적지 도착점, 정지 중 마지막 측정 이후 10분이 지난 때에만 측정합니다.
-- 이동 중 지나가는 방이나 문에서는 측정하지 않습니다. 같은 방·시각의 측정은 중복 기록하지 않습니다.
-- 아직 측정하지 않은 방은 `null`입니다. 다른 방으로 이동해도 이전 관측값은 유지되며 경과 시간만 늘어납니다.
-- 측정값이 35 이상이면 정화 시작, 15 이하이면 정화 종료, 그 사이면 기존 결정을 유지합니다.
-- 정화 도중 실제 농도가 낮아져도 다음 측정 전에는 판단을 바꾸지 않습니다.
-- 이동 요청으로 경로가 생기면 정화를 중단합니다. 도착 후 새 측정값으로 판단합니다.
-- 일시정지는 정화 결정을 보존하지만 실제 정화와 시간 진행을 멈춥니다.
+- The purifier measures in its starting room, on arrival at a destination, and after ten minutes since the last reading while stationary.
+- It does not measure in doorways or in rooms it passes through. It records at most one reading per room at a given time.
+- An unmeasured room has `null` observation fields. After departure, the last reading stays in place and its age increases.
+- A reading of 35 or higher starts purification. A reading of 15 or lower stops it. Between these values, the previous decision remains in effect.
+- If the underlying concentration drops during purification, the decision stays in effect until the next measurement.
+- Reserving a route that requires movement stops purification. A fresh reading on arrival determines what happens next.
+- Pausing preserves the purification decision and suspends both purification and the clock.
 
-`get_state()`는 실제로 측정한 정보만 제공합니다. `get_ground_truth()`의 모든 방 내부 농도 및 `get_scenario()`의 미래 활동 시간표는 평가·정답 생성용이며 일반 앱 관측값이나 AI 예측 입력으로 사용하지 않습니다. 관측은 예측값과도 별개입니다.
+`get_state()` exposes only observed air quality. The internal room concentrations from `get_ground_truth()` and future activities from `get_scenario()` are for evaluation and label generation. Keep them out of app observations and AI prediction inputs. Measurements and forecasts are separate values.
 
-## 인터페이스
+## Interface
 
-| 함수 | 반환 및 동작 |
+| Function | Return value or behavior |
 |---|---|
-| `Simulator(seed=0, day_index=0, late_dinner=False, events=None)` | 재현 가능한 하루 시뮬레이터 생성 |
-| `get_map()` | 지도·방 영역·도착점·시작점 사본 |
-| `get_state()` | 앱·정책용 상태 사본. 시간 진행 없음 |
-| `start()` | 실행 허용 후 상태 반환 |
-| `pause()` | 실행 중지 후 상태 반환 |
-| `reset()` | 위치·경로·목적지·시각·환경·관측·이력 초기화 후 상태 반환 |
-| `move_to(room)` | 현재 위치에서 새 경로 예약 후 상태 반환 |
-| `step()` | 실행 중이면 한 단계 진행 후 상태 반환 |
-| `get_history()` | 명령·도착·측정·정화 전환 기록 사본 |
-| `get_ground_truth()` | 평가 전용 내부 농도 사본 |
-| `get_scenario()` | 재현용 설정과 활동 시간표 사본 |
-| `render_map()` | 청정기 위치를 포함한 문자 지도 |
+| `Simulator(seed=0, day_index=0, late_dinner=False, events=None)` | Create a reproducible one-day simulation |
+| `get_map()` | Return a copy of the map, room boundaries, targets, and start position |
+| `get_state()` | Return a snapshot for the app or control policy without advancing time |
+| `start()` | Enable simulation and return the state |
+| `pause()` | Pause simulation and return the state |
+| `reset()` | Reset the position, route, destination, clock, environment, observations, and history, then return the state |
+| `move_to(room)` | Reserve a route from the current position and return the state |
+| `step()` | Advance one tick if running and return the state |
+| `get_history()` | Return a copy of the command, arrival, measurement, and purification transition history |
+| `get_ground_truth()` | Return a copy of the internal concentrations for evaluation |
+| `get_scenario()` | Return a copy of the settings and activity schedule for reproducibility |
+| `render_map()` | Return a text map showing the purifier's position |
 
-`reset()`은 위치·목적지·경로·시간·환경을 초기 상태로 되돌립니다. 같은 설정과 명령을 사용하면 같은 결과가 재현됩니다. 초기화 직후 이력에는 초기화와 시작 방 측정만 남습니다.
+`reset()` restores the initial position, destination, route, clock, and environment. Identical settings and commands reproduce the same results. Immediately after reset, the history contains only the reset and the initial room measurement.
 
-### 상태 필드
+### State fields
 
-| 필드 | 의미 |
+| Field | Meaning |
 |---|---|
-| `current_room`, `room_name` | 현재 방 코드·이름. 문에서는 `null` |
-| `position` | `[x, y]` 좌표 |
-| `destination` | 요청한 목적지. 도착 후 유지, 초기화 시 `null` |
-| `status` | `moving`, `idle`, `purifying` 중 활동 상태 |
-| `remaining_path`, `remaining_steps` | 현재 칸 다음부터 남은 경로와 칸 수 |
-| `simulation_time_seconds` | 가상 경과 초 |
-| `environment_minute` | 마지막으로 계산한 환경의 경과 분 |
-| `tick_seconds` | 한 단계의 가상 초. 기본 10 |
-| `is_running` | 실행 허용 여부 |
-| `is_purifying` | 실제로 실행 중이며 정지해서 정화 중인지 여부 |
-| `finished` | 가상 하루 종료 여부 |
-| `observations` | 방별 마지막 측정 정보 |
+| `current_room`, `room_name` | Current room ID and display name. In a doorway both are `null` |
+| `position` | `[x, y]` coordinates |
+| `destination` | Requested destination. Retained after arrival and reset to `null` |
+| `status` | `moving`, `idle`, `purifying` indicate the current activity |
+| `remaining_path`, `remaining_steps` | Remaining route and cell count, excluding the current cell |
+| `simulation_time_seconds` | Elapsed simulated seconds |
+| `environment_minute` | Last simulated minute processed by the environment |
+| `tick_seconds` | Simulated seconds per tick. Default: 10 |
+| `is_running` | Whether the simulation is running |
+| `is_purifying` | Whether the running purifier is stationary and actively purifying |
+| `finished` | Whether the simulated day has ended |
+| `observations` | Last measurement in each room |
 
-`status`는 일시정지해도 보존됩니다. 화면의 일시정지 표시는 `is_running`으로 판단하고 정화 동작 표시는 `is_purifying`으로 판단합니다. 도착 판정에는 `remaining_steps == 0`을 사용합니다.
+`status` is preserved during a pause. Use `is_running` for the pause indicator and `is_purifying` for active purification. Check `remaining_steps == 0` to determine whether the route is finished.
 
-각 방의 관측에는 `pm25`, `measured_at_seconds`, `source_minute`, `age_seconds`가 있습니다. 초기 거실은 농도 10, 시각 0이며 주방·침실은 네 필드가 모두 `null`입니다. `age_seconds`는 마지막 측정 이후 가상 경과 초입니다.
+Each room has `pm25`, `measured_at_seconds`, `source_minute`, and `age_seconds`. Initially the living room has a reading of 10 at time zero. All four fields are `null` for the kitchen and bedroom. `age_seconds` counts simulated seconds since the last measurement.
 
-잘못된 방 코드 및 도달 불가 목적지는 `ValueError`(또는 하위 유형 `NoPathError`)로 거부하며 이전 상태를 유지합니다. 반환된 사본 수정은 내부 상태에 영향을 주지 않습니다.
+An invalid room ID or unreachable destination raises `ValueError` or its subclass `NoPathError` and preserves the previous state. Modifying a returned snapshot does not affect internal state.
 
-## 애플리케이션 연동
+## Application integration
 
-시뮬레이터 인스턴스를 유지하면서 제어 명령과 상태 조회를 처리합니다. 실행 주기는 외부 애플리케이션에서 관리합니다.
+Keep a simulator instance alive to handle commands and state queries. The host application controls the update interval.
 
-| 동작 | 호출 |
+| Action | Call |
 |---|---|
-| 시작·재개 | `start()` |
-| 일시정지 | `pause()` |
-| 초기화 | `reset()` |
-| 목적지 지정 | `move_to(room)` |
-| 한 단계 진행 | `step()` |
-| 상태·지도 조회 | `get_state()`, `get_map()` |
+| Start or resume | `start()` |
+| Pause | `pause()` |
+| Reset | `reset()` |
+| Set destination | `move_to(room)` |
+| Advance one step | `step()` |
+| Read state or map | `get_state()`, `get_map()` |
 
-진행 루프는 한 곳에서 관리하며, 실행 중에는 이동 경로가 없어도 `step()`을 호출합니다. 목적지에 도착한 뒤에도 시간과 공기질 변화가 계속됩니다. 상태 조회는 가상 시간을 진행시키지 않습니다.
+Use a single update loop and call `step()` while running, even without a route. Time and air quality continue to change after arrival. State queries do not advance the clock.
 
-화면은 `is_running`으로 실행 여부, `is_purifying`으로 정화 동작을 표시할 수 있습니다. 공기질 표시에는 `observations`의 측정값과 시각을 사용하며, `null`은 미측정을 의미합니다. 초기화 후에는 반환된 상태로 화면을 갱신합니다.
+Use `is_running` for the running indicator and `is_purifying` for active purification. Display the readings and timestamps from `observations`. A `null` value means the room has not been measured. Refresh the screen with the state returned after reset.
 
-상태는 메모리에 저장됩니다. 명령과 단계 진행은 순서대로 처리하거나 잠금으로 동시 변경을 제어해야 합니다. 서버 재시작 후 상태 복원과 여러 프로세스 간 상태 공유는 지원하지 않습니다.
+State is stored in memory. Process commands and steps sequentially or protect concurrent updates with a lock. State is neither restored after a server restart nor shared between processes.
 
-## 공통 환경 계산
+## Shared air quality calculations
 
-모든 방은 10µg/m³에서 시작합니다. 매분 다음 순서로 계산합니다.
+All rooms start at 10 µg/m³. Each minute, apply these calculations in order.
 
 ```text
-C1 = 이전 농도 + 오염 증가량
+C1 = previous concentration + emission
 C2 = C1 - max(C1 - 10, 0) × 0.01
-정화 없음: C2
-정화 s초: max(5, C2 × 0.95 ** (s / 60))
+Without purification: C2
+With s seconds of purification: max(5, C2 × 0.95 ** (s / 60))
 ```
 
-60초 정화 시 농도가 5% 감소합니다. 분 중간 도착·출발은 실제 정화한 초를 반영합니다. 예를 들어 20초 정화했으면 1분 전체를 정화한 것으로 계산하지 않습니다. 정화 효과는 다음 분 경계에 반영되므로, 이미 떠난 방의 농도에 이전에 정화했던 구간의 효과가 반영될 수 있습니다. 반영 시점과 정화가 수행된 구간은 구분됩니다.
+60 seconds of purification reduces concentration by 5%, subject to the floor. If the purifier arrives or leaves mid-minute, count only the seconds it actually purifies. For example, 20 seconds count as a partial minute. The effect is applied at the next minute boundary, so a room can show the effect of earlier purification after the purifier has left.
 
-이 계산은 오염·자연 감소·정화를 분 경계에서 처리하는 근사 규칙입니다. 데이터 생성기와 시뮬레이터 모두 같은 함수와 정화 시간을 사용해야 결과가 일치합니다. 규칙 버전은 `pm25-v1.1`이며 기존 시드별 활동 시간표를 유지하기 위해 활동 난수 버전은 `pm25-v1`로 유지합니다.
+This approximation applies emissions, natural decay, and purification at minute boundaries. The data generator and simulator must use the same function and purification durations to reproduce results. The rule version is `pm25-v1.1`. Activity generation retains the `pm25-v1` seed version to preserve existing schedules.
 
-요리는 분당 +3, 청소·침구 정리는 +2입니다. 겹치는 활동은 합산하며 방 사이 오염 확산은 없습니다. 자연 감소는 10을 초과한 부분에만 적용합니다.
+Cooking adds 3 units per minute. Cleaning and making the bed each add 2. Overlapping activities add together. Pollution does not spread between rooms. Natural decay applies only to the concentration above 10.
 
-| 활동 | 방 | 시작 시각 범위 | 지속 시간 |
+| Activity | Room | Start window | Duration |
 |---|---|---|---|
-| 아침 요리 | 주방 | 07:00~09:00 | 10~20분 |
-| 저녁 요리 | 주방 | 18:00~20:00 | 10~20분 |
-| 청소 | 거실 | 13:00~17:00 | 5~10분 |
-| 침구 정리 | 침실 | 07:00~10:00 | 5~10분 |
+| Morning cooking | Kitchen | 07:00–09:00 | 10–20 min |
+| Evening cooking | Kitchen | 18:00–20:00 | 10–20 min |
+| Cleaning | Living room | 13:00–17:00 | 5–10 min |
+| Making the bed | Bedroom | 07:00–10:00 | 5–10 min |
 
-범위 양 끝을 포함해 정수 분으로 선택합니다. 활동은 `[시작, 종료)` 구간에 적용합니다. `late_dinner=True`는 저녁 시작 범위를 2시간 늦춥니다. 환경 난수는 방문 시나리오 난수와 독립적입니다.
+Times are drawn in whole minutes with both endpoints included. Activities run over the half-open interval `[start, end)`. Setting `late_dinner=True` shifts the dinner start window two hours later. Environmental randomness is independent of the visit schedule.
 
 ```python
 from simulation.environment import AirEnvironment
 
 env = AirEnvironment(seed=42, day_index=0)
-env.advance()                               # 정화 없이 1분
-env.advance(purifying_room="kitchen")         # 주방에서 60초 정화한 1분
-# 분 중간 이동이 포함된 경우, 실제로 정지해서 정화한 시간만 지정
+env.advance()                               # Advance one minute without purification
+env.advance(purifying_room="kitchen")         # Purify the kitchen for the full minute
+# For a partial minute, supply only the time spent purifying while stationary
 env.advance(purification_seconds={"kitchen": 20})
 observation = env.sample_current_room("kitchen")
 ```
 
-`AirEnvironment` 단독 사용 시 실제 위치·정화 시간을 호출자가 검증해야 합니다. `Simulator`는 이를 내부에서 관리합니다. `purifying_room`과 `purification_seconds`는 동시에 지정할 수 없으며, 방별 정화 시간 합은 60초 이하여야 합니다. 잘못된 인수는 환경 변경 전에 거부합니다.
+`AirEnvironment` requires callers using it directly to verify the purifier's location and purification time. `Simulator` handles both internally. Specify only one of `purifying_room` and `purification_seconds`. Total purification time across rooms must be at most 60 seconds per minute. Invalid inputs are rejected before the environment changes.
 
-`calculate_pm25(current_pm25, emission=0.0, purifying=False)` 및 `advance(purifying_room=...)`는 1분 단위 계산 인터페이스입니다. 부분 시간은 `calculate_pm25(..., purifying=True, purifying_seconds=20)`으로도 계산할 수 있습니다.
+`calculate_pm25(current_pm25, emission=0.0, purifying=False)` and `advance(purifying_room=...)` support one-minute calculations. For partial purification, use `calculate_pm25(..., purifying=True, purifying_seconds=20)`.
 
-## 지도
+## Map
 
-15열 × 11행 격자이며 좌표는 `[x, y]`, 왼쪽 위는 `[0, 0]`입니다. 상하좌우로 이동하며 벽 `#`와 장애물 `X`를 피합니다. 바닥 `.`과 문 `D`는 통과할 수 있습니다.
+15 columns and 11 rows form the grid. Coordinates are `[x, y]` with `[0, 0]` at the top left. The purifier moves horizontally or vertically, avoiding walls (`#`) and obstacles (`X`). Floors (`.`) and doorways (`D`) are traversable.
 
-| 방 코드 | 방 이름 | 도착점 |
+| Room ID | Display name | Target |
 |---|---|---|
-| `living_room` | 거실 | `[2, 4]` (초기 위치) |
-| `kitchen` | 주방 | `[11, 3]` |
-| `bedroom` | 침실 | `[11, 8]` |
+| `living_room` | Living room | `[2, 4]` (start position) |
+| `kitchen` | Kitchen | `[11, 3]` |
+| `bedroom` | Bedroom | `[11, 8]` |
 
-문 `[7, 3]`, `[7, 8]`은 어느 방에도 속하지 않습니다. 지도 정의 변경은 새 시뮬레이터 생성 시 반영됩니다. 클라이언트는 `get_map()`으로 같은 지도를 표시할 수 있습니다.
+Doorways at `[7, 3]` and `[7, 8]` belong to no room. Map edits take effect when a new simulator is created. Clients can display the same map using `get_map()`.
 
-## 예측값 기반 목적지 선택 (초기 규칙)
+## Forecast-based destination selection (initial policy)
 
-`controller.py`는 외부에서 받은 같은 현재 시점의 **30분 뒤 예측값**으로 목적지를 고릅니다. 모델 학습·추론 자체는 포함하지 않습니다. `controller_demo.py`는 동작 검증을 위한 예시 예측값을 사용합니다.
+`controller.py` selects a destination using externally supplied **30-minute forecasts** made at the same time. Training and inference take place outside the controller. `controller_demo.py` uses example predictions to demonstrate its behavior.
 
 ```sh
 python3 -m simulation.controller_demo
 ```
 
-### 초기 선택 규칙
+### Selection rules
 
-1. 지도상 현재 위치부터 각 방 도착점까지 A* 경로를 구합니다. 현재 방은 그 자리에서 머무르므로 이동 시간 0입니다.
-2. 이동 초 = 이동 칸 수 × 시뮬레이터의 `tick_seconds` (기본 10초).
-3. 도달 가능하고 예측 PM이 `threshold` 이상인 방을 후보로 삼습니다. 기본 기준은 35입니다.
-4. 점수 = 예측 PM − 이동 시간(분) × `travel_weight`. 기본 가중치는 1이며 분당 1 PM만큼 점수에서 뺍니다.
-5. 최고 점수를 선택합니다. 동점이면 이동 시간이 짧은 방, 그래도 동점이면 방 코드 사전순입니다.
+1. Find an A* route from the current position to each room's target. Selecting the current room means staying in place, so its travel time is zero.
+2. Travel time in seconds equals the number of cells to move times `tick_seconds` (default 10 seconds).
+3. Consider reachable rooms whose predicted PM is at least `threshold`, initially 35.
+4. Score = predicted PM − travel time in minutes × `travel_weight`. The default weight of 1 subtracts one point per minute of travel.
+5. Choose the highest score. Break ties by shorter travel time, then by room ID in alphabetical order.
 
-기준 35와 가중치 1은 검증 전 초기 설정입니다. 최적 정책이나 AI 성능을 보장하지 않습니다. 후보 기준은 **예측 PM**에 적용하며, 점수가 음수여도 후보 중 최고이면 선택합니다.
+The threshold of 35 and weight of 1 are initial settings pending validation. They do not establish optimality or AI performance. The threshold applies to **predicted PM**. An eligible room can win even with a negative score.
 
-### 호출 예제
+### Example call
 
 ```python
 from simulation import Simulator
 from simulation.controller import choose_destination, decide_and_move
 
 sim = Simulator(seed=42)
-# 인터페이스 사용 예시: 각 방의 30분 뒤 예상 PM2.5
+# Example 30-minute room forecasts for PM2.5
 predictions = {"living_room": 20.0, "kitchen": 60.0, "bedroom": 40.0}
 
-preview = choose_destination(sim, predictions)  # 조회만 하며 상태를 변경하지 않음
-result = decide_and_move(sim, predictions)      # 다른 방 선택 시 move_to() 호출
+preview = choose_destination(sim, predictions)  # Preview the decision without changing state
+result = decide_and_move(sim, predictions)      # Call move_to() if another room is selected
 print(result["decision"]["target_room"])       # kitchen
 
 sim.start()
@@ -242,32 +242,32 @@ while sim.get_state()["remaining_steps"]:
     sim.step()
 ```
 
-`decide_and_move()`는 경로만 예약하고 시간을 진행하거나 자동 시작하지 않습니다. 이미 실행 중이면 실행 상태를 유지하고, 일시정지 중이면 사용자가 시작해야 이동합니다. 단계 진행은 애플리케이션의 단일 진행 루프에서 관리합니다.
+`decide_and_move()` reserves a route without advancing time or starting the simulator. A running simulation continues running. A paused simulation moves only after it is started. The application's single update loop advances the steps.
 
-### 반환값과 예외
+### Return values and exceptions
 
-`choose_destination()`은 다음 필드를 가진 결정 사본을 반환합니다.
+`choose_destination()` returns a decision snapshot with the following fields.
 
-- `action`: 다른 방 이동 예약 `move`, 현재 방 유지 `stay`, 새 목적지 없음 `wait`.
-- `target_room`: 선택한 방 코드 또는 `null`.
+- `action`: reserve travel to another room with `move`, remain in the current room with `stay`, or leave the destination unchanged with `wait`.
+- `target_room`: selected room ID or `null`.
 - `reason`: `highest_score`, `current_room_selected`, `all_predictions_below_threshold`, `no_reachable_candidate`.
-- `decided_at_seconds`: 판단한 가상 시각.
+- `decided_at_seconds`: simulated time of the decision.
 - `prediction_horizon_minutes`: 30.
-- `threshold`, `travel_weight`: 적용한 설정.
-- `rooms`: 방별 예측 PM, 도달 가능 여부, 이동 칸 수·초, 점수, 후보 여부. 도달 불가 방은 이동 비용과 점수가 `null`입니다.
+- `threshold`, `travel_weight`: settings used for this decision.
+- `rooms`: predicted PM, reachability, travel steps and seconds, score, and eligibility for each room. Travel cost and score are `null` for unreachable rooms.
 
-`decide_and_move()`는 `{decision: 결정 결과, state: 시뮬레이터 상태}`를 반환합니다. 이 결정 결과는 기존 `get_state()`에 자동 저장되지 않습니다. 서버·앱 연동 때 반환 결과를 전달하고 초기화 시 서버가 보관한 결정도 비워야 합니다.
+`decide_and_move()` returns a dictionary with `decision` and `state`. `get_state()` does not store the decision. Forward it to the server or app and clear any server-side copy on reset.
 
-`stay`와 `wait`는 **새로운 이동을 예약하지 않는다**는 의미입니다. 가상 시간을 멈추거나, 기존 정화를 강제로 끄거나, 이전 `destination` 표시를 지우지 않습니다. 선택된 새 목적지 표시는 `decision.target_room`을 사용합니다. 정화는 실제 측정값으로 판단하는 기존 시뮬레이터 규칙을 따릅니다. 높은 예측값만으로 정화를 켜지 않습니다.
+`stay` and `wait` reserve no new movement. Time continues, purification keeps its current setting, and the previous `destination` remains visible. Use `decision.target_room` to display the newly selected target. The simulator switches purification based on actual measurements. A high forecast alone does not start purification.
 
-누락된 방, 알 수 없는 방, `None`, 음수·무한대·NaN·문자·불리언 예측은 `ValueError`로 거부하고 기존 시뮬레이터 상태를 보존합니다. 예측값은 세 방 모두 유한한 0 이상의 Python `int`/`float`여야 합니다. 모델 라이브러리의 반환값은 연결 코드에서 필요에 따라 `float`로 변환합니다.
+Missing or unknown rooms and invalid predictions (`None`, negatives, infinity, NaN, strings, or booleans) raise `ValueError` and preserve the previous state. Supply a finite, nonnegative Python `int` or `float` for each room. Convert model outputs to `float` in the integration layer if needed.
 
-미측정 방에 대한 예측값이 없으면 숨겨진 실제 농도나 0으로 대체하지 않습니다. 호출자는 초기 순찰이나 예측 모델의 결측값 처리 정책으로 필요한 입력을 준비해야 합니다. 이 모듈은 초기 순찰을 자동 실행하지 않습니다.
+When a room lacks a prediction, the caller must first gather initial readings or apply the model's missing-data policy. Do not substitute hidden concentrations or zero. The controller does not initiate the initial patrol.
 
-### 실행 조건과 모델 연동
+### Execution and model integration
 
-제어기는 정지한 상태에서 한 번 목적지를 판단하고 이동 경로를 예약합니다. 예약된 경로가 남아 있으면 일시정지 중이어도 새 판단을 거부합니다. 하루 종료 후에도 거부합니다. 잘못된 요청으로 경로가 덮어써지지 않습니다.
+The controller selects a destination and reserves a route while stationary. An outstanding route prevents another decision even while paused. Decisions are also rejected after the day ends. Invalid requests preserve an existing route.
 
-외부 예측 모델의 결과는 위 입력 형식으로 변환해 전달합니다. `age_seconds / 60`으로 측정 경과 분을 구하며 학습 시 사용한 단위와 맞춥니다. 미래 사건이나 미관측 실제 농도를 예측 입력으로 사용하지 않습니다. 예측값에는 자체 타임스탬프가 없으므로 호출자가 현재 상태에 맞는 최신 예측인지 보장해야 합니다.
+Convert external forecasts to the input format above. Use `age_seconds / 60` for elapsed minutes and match the units used in training. Keep future events and unobserved concentrations out of the forecast inputs. Predictions carry no timestamp, so the caller must ensure they correspond to the current state.
 
-모델 추론, 자동 재판단 주기, 이동 중 재계획, HTTP API 및 화면 렌더링은 이 모듈의 제공 범위에 포함되지 않습니다. 서버는 판단과 경로 예약을 다른 상태 변경과 동시에 실행하지 않도록 직렬 처리해야 합니다.
+Model inference, the decision interval, replanning during travel, the HTTP API, and rendering are handled outside this module. The server must serialize decisions, route reservations, and other state changes.

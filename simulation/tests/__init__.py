@@ -1,1 +1,1 @@
-"""시뮬레이션 동작 검증."""
+"""Simulation behavior tests."""
