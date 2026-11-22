@@ -1,0 +1,63 @@
+{
+  "base_revision": "c598cd37ea613576f02ac3336128e65acea4e919",
+  "sklearn_version": "1.7.2",
+  "model_sha256": "3497d6b5c860fcbb0af7f7bc7d1e1910698a831b9ff64a84204b162933ce9b7d",
+  "source_sha256": {
+    "simulation/environment.py": "0678019a75ae1cfdcf397a3cb035355877db10e951a1636ef45403da08874cc6",
+    "simulation/simulator.py": "0bd3e2f37b807eca679e71a5b0dd24b3f2dd650d845ac28ceab2d0c952a1fe0f",
+    "simulation/controller.py": "b7e10a3e6ddde5a31eb06f9d9f4ca5f40e4b2bcb7f7b2d4f52528c20910c2026",
+    "simulation/compare_patrol.py": "0a40437399f23232752afca837a8e76df5edef843b9033da5a4fc81728a668f7",
+    "simulation/pathfinding.py": "1d80279020a3659f197ad8f3758c63829a985b03b4d78ab7548ffbd735ff86fb",
+    "simulation/house_map.json": "139d4dc1180609da5ab0b75a155fa96701c30ad8179d738104bdeea021d3e9bc",
+    "ai/predict.py": "99c1e8f3ad42ba32ee83e64f136af84f00e47addc1ccf7092b7753071695420e",
+    "ai/evaluate_policies.py": "3b0d2b7b2057942cd5ded06da482e8f37aa47b8b2dffd0608fa14cb9afa056cd"
+  },
+  "event_seed": 9100,
+  "scenarios": [
+    {
+      "day_index": 0,
+      "late_dinner": false
+    },
+    {
+      "day_index": 1,
+      "late_dinner": false
+    },
+    {
+      "day_index": 2,
+      "late_dinner": false
+    },
+    {
+      "day_index": 3,
+      "late_dinner": false
+    },
+    {
+      "day_index": 4,
+      "late_dinner": false
+    },
+    {
+      "day_index": 5,
+      "late_dinner": false
+    },
+    {
+      "day_index": 6,
+      "late_dinner": true
+    },
+    {
+      "day_index": 7,
+      "late_dinner": true
+    },
+    {
+      "day_index": 8,
+      "late_dinner": true
+    }
+  ],
+  "threshold_operator": ">",
+  "threshold": 35,
+  "sampling": "1440 minute-end samples, times 1 through 1440; 1-minute approximation",
+  "fixed_policy": "departure every 1200 seconds; living/kitchen/bedroom",
+  "ai_policy": "Part B ai_tick, 10-minute forecasts, threshold 35, travel weight 1",
+  "initialization": "same initial state and living-room observation; each policy uses its own startup behavior",
+  "dataset_config_sha256": "9a8bf61542131ef82be38c831405fbf2edfef3026ba29cd29beb82c1fb6528c4",
+  "training_max_measurement_age_minutes": 60.0,
+  "event_schedules_disjoint_from_existing_60_days": true
+}
