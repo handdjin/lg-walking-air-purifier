@@ -1,5 +1,6 @@
 import asyncio
 from contextlib import asynccontextmanager
+from typing import Literal
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -16,6 +17,11 @@ predictor = Predictor()
 latest_prediction = None
 latest_decision = None
 last_prediction_seconds = None
+
+
+Mode = Literal["auto", "manual"]
+selected_mode: Mode = "auto"
+active_mode: Mode = "auto"
 
 
 def initial_patrol():
@@ -59,7 +65,7 @@ def auto_decision():
     latest_prediction = result
 
     # Keep an active route unchanged.
-    if result["status"] == "ok" and state["remaining_steps"] == 0:
+    if active_mode == "auto" and result["status"] == "ok" and state["remaining_steps"] == 0:
         response = decide_and_move(
             simulator,
             result["predictions"],
@@ -73,17 +79,23 @@ def auto_decision():
         latest_decision = None
 
 
+def advance_simulation():
+    global active_mode
+    if simulator.get_state()["is_running"]:
+        if active_mode == "auto":
+            initial_patrol()
+        auto_decision()
+        state = simulator.step()
+        if not state["remaining_steps"]:
+            active_mode = selected_mode
+    return status()
+
+
 async def simulation_loop():
     """Advance the simulation through one server-controlled loop."""
     while True:
         try:
-            state = simulator.get_state()
-
-            if state["is_running"]:
-                initial_patrol()
-                auto_decision()
-                simulator.step()
-
+            advance_simulation()
         except Exception:
             import traceback
 
@@ -124,24 +136,48 @@ class MoveRequest(BaseModel):
     target_room: str
 
 
+class ModeRequest(BaseModel):
+    mode: Mode
+
+
 @app.get("/")
 def home():
     return {"message": "FastAPI is working!"}
 
 
-@app.get("/status")
-async def get_status():
+def status():
     return {
         **simulator.get_state(),
+        "mode": selected_mode,
+        "active_mode": active_mode,
         "ai_prediction": latest_prediction,
         "ai_decision": latest_decision,
     }
 
 
+@app.get("/status")
+async def get_status():
+    return status()
+
+
+@app.post("/mode")
+async def set_mode(request: ModeRequest):
+    global selected_mode, active_mode, latest_decision
+    selected_mode = request.mode
+    if not simulator.get_state()["remaining_steps"]:
+        active_mode = selected_mode
+    if selected_mode == "manual":
+        latest_decision = None
+    return status()
+
+
 @app.post("/move")
 async def move(request: MoveRequest):
+    if selected_mode != "manual" or active_mode != "manual":
+        raise HTTPException(status_code=409, detail="Manual mode must be active to select a room.")
     try:
-        return simulator.move_to(request.target_room)
+        simulator.move_to(request.target_room)
+        return status()
     except ValueError as error:
         raise HTTPException(
             status_code=400,
@@ -151,7 +187,7 @@ async def move(request: MoveRequest):
 
 @app.post("/step")
 async def step():
-    return simulator.step()
+    return advance_simulation()
 
 
 @app.get("/map")
@@ -165,13 +201,15 @@ async def reset():
     global latest_decision
     global last_prediction_seconds
 
-    state = simulator.reset()
+    global selected_mode, active_mode
+    simulator.reset()
+    selected_mode = active_mode = "auto"
 
     latest_prediction = None
     latest_decision = None
     last_prediction_seconds = None
 
-    return state
+    return status()
 
 
 @app.post("/start")
