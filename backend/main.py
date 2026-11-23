@@ -231,3 +231,7 @@ async def pause():
 @app.get("/predict")
 async def predict():
     return predict_from_simulator(predictor, simulator)
+
+@app.get("/history")
+async def get_history():
+    return simulator.get_history()
