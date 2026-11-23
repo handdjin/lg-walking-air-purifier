@@ -11,10 +11,13 @@ import {
 } from 'react-native';
 
 const SERVER_URL =
-  Platform.OS === 'web'
-    ? 'http://127.0.0.1:8000'
-    : 'http://192.168.0.3:8000';
+  'https://lg-air-purifier-demo.duckdns.org';
 
+const API_KEY = process.env.EXPO_PUBLIC_API_KEY;
+
+const API_HEADERS = {
+  'X-API-Key': API_KEY ?? '',
+};
 type HouseMap = {
   width: number;
   height: number;
@@ -38,6 +41,7 @@ type SimulatorState = {
   simulation_time_seconds: number;
   is_running: boolean;
   is_purifying: boolean;
+  is_measuring: boolean;
   finished: boolean;
   observations: Record<string, { pm25: number | null; age_seconds: number | null }>;
   ai_prediction: { reference_minute: number; target_minute: number; status: string; predictions: Record<string, number | null> } | null;
@@ -75,11 +79,15 @@ export default function HomeScreen() {
   const requestRef = useRef(false);
 
   const refresh = async (withMap = false) => {
-    const response = await fetch(`${SERVER_URL}/status`);
+    const response = await fetch(`${SERVER_URL}/status`, {
+  headers: API_HEADERS,
+});
     if (!response.ok) throw new Error('Status request failed');
     const state: SimulatorState = await response.json();
     if (withMap) {
-      const mapResponse = await fetch(`${SERVER_URL}/map`);
+      const mapResponse = await fetch(`${SERVER_URL}/map`, {
+  headers: API_HEADERS,
+});
       if (!mapResponse.ok) throw new Error('Map request failed');
       setHouseMap(await mapResponse.json());
     }
@@ -109,6 +117,7 @@ export default function HomeScreen() {
     try {
       const response = await fetch(`${SERVER_URL}/${endpoint}`, {
         method: 'POST',
+        headers: API_HEADERS,
         ...(body ? { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : {}),
       });
       if (!response.ok) throw new Error('Command failed');
@@ -213,8 +222,16 @@ export default function HomeScreen() {
               좌표: [{simState.position.join(', ')}]
             </Text>
             <Text style={styles.detail}>
-              상태: {simState.finished ? '종료' : !simState.is_running ? '일시정지' : simState.status === 'moving' ? '이동 중' : simState.is_purifying ? '정화 중' : '대기 중'}
+              상태: {
+                simState.finished ? '종료' :
+                !simState.is_running ? '일시정지' :
+                simState.status === 'moving' ? '🔵 이동 중' :
+                simState.is_measuring ? '🟡 측정 중' :
+                simState.is_purifying ? '🟢 정화 중' :
+                '⚪ 대기 중'
+              }
             </Text>
+
             <Text style={styles.detail}>
               남은 이동 칸: {simState.remaining_steps}
             </Text>

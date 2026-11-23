@@ -44,8 +44,11 @@ class Simulator:
         self._seconds = 0
         self._running = False
         self._purifying = False
-        self._exposure = {}  # Simulated seconds spent purifying each room during the current minute
+        
+        self._last_measurement_seconds = None
+        self._exposure = {}  # 이번 1분 중 방별로 실제 정화한 가상 초
         self._observations = {room: None for room in self._map.rooms}
+        
         self._history = []
         self._record("reset")
         self._measure_current_room("initial")
@@ -91,6 +94,7 @@ class Simulator:
             "source_minute": sample["minute"],
         }
         self._observations[room] = observation
+        self._last_measurement_seconds = self._seconds
         self._record("measurement", room=room, reason=reason, **observation)
         if sample["pm25"] >= PURIFY_ON:
             self._set_purifying(True, "measurement")
@@ -126,6 +130,11 @@ class Simulator:
             "is_purifying": self._running and self._purifying and not self._path,
             "finished": self._seconds >= MINUTES_PER_DAY * 60,
             "observations": observations,
+            "is_measuring": (
+            self._last_measurement_seconds is not None
+            and self._seconds - self._last_measurement_seconds < 20
+            and not self._path
+),
         }
     
     def estimate_travel_seconds(self, room):

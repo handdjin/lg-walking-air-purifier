@@ -90,7 +90,7 @@ async def simulation_loop():
             traceback.print_exc()
             simulator.pause()
 
-        await asyncio.sleep(0.01)
+        await asyncio.sleep(1.0)
 
 
 @asynccontextmanager
