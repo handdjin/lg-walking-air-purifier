@@ -1,17 +1,16 @@
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
   Pressable,
   StyleSheet,
-  Platform,
   ScrollView,
   useWindowDimensions,
 } from 'react-native';
 
 const SERVER_URL =
-  'https://lg-air-purifier-demo.duckdns.org';
+  process.env.EXPO_PUBLIC_SERVER_URL ?? 'https://lg-air-purifier-demo.duckdns.org';
 
 const API_KEY = process.env.EXPO_PUBLIC_API_KEY;
 
@@ -31,7 +30,11 @@ type HouseMap = {
   start: number[];
 };
 
+type Mode = 'auto' | 'manual';
+
 type SimulatorState = {
+  mode: Mode;
+  active_mode: Mode;
   current_room: string | null;
   room_name: string | null;
   position: number[];
@@ -78,7 +81,10 @@ export default function HomeScreen() {
   const [busy, setBusy] = useState(false);
   const requestRef = useRef(false);
 
-  const refresh = async (withMap = false) => {
+  const revision = useRef(0);
+
+  const refresh = useCallback(async (withMap = false) => {
+    const version = revision.current;
     const response = await fetch(`${SERVER_URL}/status`, {
   headers: API_HEADERS,
 });
@@ -91,10 +97,10 @@ export default function HomeScreen() {
       if (!mapResponse.ok) throw new Error('Map request failed');
       setHouseMap(await mapResponse.json());
     }
-    setSimState(state);
-  };
+    if (version === revision.current) setSimState(state);
+  }, []);
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     if (requestRef.current) return;
     requestRef.current = true;
     setBusy(true);
@@ -108,17 +114,18 @@ export default function HomeScreen() {
       setBusy(false);
       setLoading(false);
     }
-  };
+  }, [refresh]);
 
   const command = async (endpoint: string, body?: object) => {
     if (requestRef.current) return;
     requestRef.current = true;
     setBusy(true);
+    revision.current++;
     try {
       const response = await fetch(`${SERVER_URL}/${endpoint}`, {
         method: 'POST',
         headers: API_HEADERS,
-        ...(body ? { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : {}),
+        ...(body ? { headers: { ...API_HEADERS, 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : {}),
       });
       if (!response.ok) throw new Error('Command failed');
       await refresh();
@@ -132,20 +139,24 @@ export default function HomeScreen() {
   };
 
   useEffect(() => {
-    void loadData();
+    const initialLoad = setTimeout(() => void loadData(), 0);
+    let polling = false;
     const timer = setInterval(async () => {
-      if (requestRef.current) return;
-      requestRef.current = true;
+      if (requestRef.current || polling) return;
+      polling = true;
       try {
         await refresh();
       } catch {
         setError('상태 조회 실패: 마지막으로 받은 정보를 표시합니다.');
       } finally {
-        requestRef.current = false;
+        polling = false;
       }
     }, 1000);
-    return () => clearInterval(timer);
-  }, []);
+    return () => {
+      clearTimeout(initialLoad);
+      clearInterval(timer);
+    };
+  }, [loadData, refresh]);
 
   // 화면 너비에 맞춰 지도 크기 조정
   const cellSize = houseMap
@@ -237,8 +248,10 @@ export default function HomeScreen() {
             </Text>
             <Text style={styles.detail}>가상 시각: {clock(Math.floor(simState.simulation_time_seconds / 60))}</Text>
             <Text style={styles.detail}>이동 경로 목적지: {simState.remaining_steps > 0 && simState.destination ? roomNames[simState.destination] : '없음'}</Text>
+            {simState.mode === 'auto' && <>
             <Text style={styles.detail}>최근 AI 선정 목적지: {simState.ai_decision?.target_room ? roomNames[simState.ai_decision.target_room] : simState.ai_decision ? '없음 (대기)' : '판단 전'}</Text>
             <Text style={styles.detail}>AI 판단 이유: {simState.ai_decision ? decisionReasons[simState.ai_decision.reason] ?? simState.ai_decision.reason : '측정 및 판단 대기'}</Text>
+            </>}
           </View>
           
 <Text style={styles.sectionTitle}>방별 공기질</Text>
@@ -246,7 +259,8 @@ export default function HomeScreen() {
 <Text style={styles.sampleNotice}>
   {simState.ai_prediction?.status === 'ok'
     ? `AI 예측 기준 ${clock(simState.ai_prediction.reference_minute)} → ${clock(simState.ai_prediction.target_minute)}`
-    : 'AI 예측 대기 또는 예측 불가'}
+    : Object.values(simState.observations).some(reading => reading.pm25 == null)
+      ? '초기 측정 필요' : 'AI 예측 대기 또는 예측 불가'}
 </Text>
 {Object.entries(roomNames).map(([roomId, name]) => {
   const measured = simState.observations?.[roomId]?.pm25;
@@ -270,7 +284,37 @@ export default function HomeScreen() {
   );
 })}
 
-          <Text style={styles.sectionTitle}>이동 제어</Text>
+          <Text style={styles.sectionTitle}>이동 모드</Text>
+          <View style={styles.buttonContainer}>
+            {(['auto', 'manual'] as const).map(mode => {
+              const selected = simState.mode === mode;
+              return (
+                <Pressable key={mode} accessibilityRole="button"
+                  accessibilityState={{ selected }}
+                  disabled={busy || selected || simState.finished}
+                  style={[styles.moveButton, !selected && styles.inactiveMode]}
+                  onPress={() => command('mode', { mode })}>
+                  <Text style={styles.buttonText}>{mode === 'auto' ? '자동' : '수동'}{selected ? ' ✓' : ''}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
+          {simState.mode !== simState.active_mode && (
+            <Text style={styles.note}>현재 목적지 도착 후 선택한 모드로 전환됩니다.</Text>
+          )}
+          <View style={styles.buttonContainer}>
+            {Object.entries(roomNames).map(([id, name]) => {
+              const disabled = busy || simState.finished || simState.mode !== 'manual' || simState.active_mode !== 'manual';
+              return (
+                <Pressable key={id} accessibilityRole="button" disabled={disabled}
+                  style={[styles.moveButton, disabled && styles.disabledButton]}
+                  onPress={() => command('move', { target_room: id })}>
+                  <Text style={styles.buttonText}>{name}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
+          <Text style={styles.sectionTitle}>시뮬레이션 제어</Text>
 
 <View style={styles.buttonContainer}>
   <Pressable style={[styles.moveButton, (busy || simState.is_running || simState.finished) && styles.disabledButton]} disabled={busy || simState.is_running || simState.finished} onPress={() => command('start')}>
@@ -283,7 +327,7 @@ export default function HomeScreen() {
     <Text style={styles.buttonText}>↺ 초기화</Text>
   </Pressable>
 </View>
-<Text style={styles.note}>시작하면 서버에서 초기 순찰 및 AI 자동 운전을 진행합니다.</Text>
+<Text style={styles.note}>{simState.mode === 'manual' ? (simState.is_running ? '이동할 방을 선택하세요.' : '방을 선택하고 시작을 누르면 이동합니다.') : '시작하면 초기 순찰 후 AI가 목적지를 선택합니다.'}</Text>
         </>
       )}
     </ScrollView>
@@ -312,6 +356,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginTop: 14,
   },
+  inactiveMode: { backgroundColor: '#475569' },
   disabledButton: {
   backgroundColor: '#94A3B8',
   },
