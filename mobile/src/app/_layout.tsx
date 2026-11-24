@@ -1,41 +1,56 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router';
+import { useFonts } from 'expo-font';
+import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { useColorScheme } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
-import { Redirect, Slot, usePathname } from 'expo-router';
-import * as SecureStore from 'expo-secure-store';
-import { AnimatedSplashOverlay } from '@/components/animated-icon';
-import AppTabs from '@/components/app-tabs';
+import { View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import 'expo-crypto';
 import 'react-native-get-random-values';
 import 'react-native-url-polyfill/auto';
-import '../amplify-config';
 
+import { Backdrop, layout } from '@/components/airy/ui';
+import { hasSavedSession, SignInContext } from '@/lib/auth-session';
 
-SplashScreen.preventAutoHideAsync();
+void SplashScreen.preventAutoHideAsync();
 
-export default function TabLayout() {
-  const colorScheme = useColorScheme();
-  const pathname = usePathname();
-const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
+const fonts = {
+  AiryDisplay: require('@/assets/airy/DynaPuff.ttf'),
+  AiryMedium: require('@/assets/airy/NotoSansKR-Medium.ttf'),
+  AiryBold: require('@/assets/airy/NotoSansKR-Bold.ttf'),
+};
 
-useEffect(() => {
-  SecureStore.getItemAsync('accessToken').then((token) => {
-    setIsLoggedIn(!!token);
-  });
-}, [pathname]);
-if (isLoggedIn === null) return null;
+export default function RootLayout() {
+  const [fontsLoaded, fontError] = useFonts(fonts);
+  const [signedIn, setSignedIn] = useState<boolean | null>(null);
+  const ready = signedIn !== null && (fontsLoaded || fontError != null);
 
-if (!isLoggedIn && pathname !== '/login') {
-  return <Redirect href="/login" />;
-}
+  useEffect(() => {
+    void hasSavedSession().then(setSignedIn, () => setSignedIn(false));
+  }, []);
 
-if (isLoggedIn && pathname === '/login') {
-  return <Redirect href="/" />;
-}
+  useEffect(() => {
+    if (ready) void SplashScreen.hideAsync();
+  }, [ready]);
+
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <AnimatedSplashOverlay />
-{pathname === '/login' ? <Slot /> : <AppTabs />}
-    </ThemeProvider>
+    <View style={layout.screen}>
+      <StatusBar style="dark" />
+      {signedIn !== true && <Backdrop />}
+      {ready && (
+        <SafeAreaView style={{ flex: 1 }}>
+          <SignInContext.Provider value={() => setSignedIn(true)}>
+            <Stack screenOptions={{ headerShown: false, animation: 'none', contentStyle: { backgroundColor: 'transparent' } }}>
+              <Stack.Protected guard={signedIn === true}>
+                <Stack.Screen name="(main)" />
+              </Stack.Protected>
+              <Stack.Protected guard={signedIn === false}>
+                <Stack.Screen name="login" />
+              </Stack.Protected>
+            </Stack>
+          </SignInContext.Provider>
+        </SafeAreaView>
+      )}
+    </View>
   );
 }

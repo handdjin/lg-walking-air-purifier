@@ -1,176 +1,99 @@
-import { useState } from 'react';
-import {
-  View, Text, TextInput, Pressable,
-  StyleSheet, ActivityIndicator,
-} from 'react-native';
-import { useRouter } from 'expo-router';
-import { signIn, confirmSignIn, fetchAuthSession } from 'aws-amplify/auth';
-import * as SecureStore from 'expo-secure-store';
+import { useContext, useState } from 'react';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TextInput, View, type TextInputProps } from 'react-native';
+
+import { Brand, Button, Card, colors, Copy } from '@/components/airy/ui';
+import { getCognitoAuth, saveSession, SignInContext } from '@/lib/auth-session';
+
+function SignInField({ label, ...props }: TextInputProps & { label: string }) {
+  return (
+    <View style={styles.field}>
+      <Copy size={12} bold>{label}</Copy>
+      <TextInput {...props} accessibilityLabel={label} placeholderTextColor={colors.muted} style={styles.input} />
+    </View>
+  );
+}
 
 export default function LoginScreen() {
-  const router = useRouter();
+  const onSignedIn = useContext(SignInContext);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [needsNewPassword, setNeedsNewPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-const [newPassword, setNewPassword] = useState('');
-const [needsNewPassword, setNeedsNewPassword] = useState(false);
-  const handleLogin = async () => {
-    if (!email.trim() || !password) {
-      setError('이메일과 비밀번호를 입력해 주세요.');
+
+  const submit = async () => {
+    if (loading) return;
+    if (needsNewPassword ? !newPassword : !email.trim() || !password) {
+      setError(needsNewPassword ? 'Enter a new password.' : 'Enter your email and password.');
       return;
     }
-
     setLoading(true);
     setError('');
-
     try {
-      const result = await signIn({
-        username: email.trim(),
-        password,
-        options: {
-          authFlowType: 'USER_PASSWORD_AUTH',
-        },
-      });
-
+      const { confirmSignIn, signIn } = await getCognitoAuth();
+      const result = needsNewPassword
+        ? await confirmSignIn({ challengeResponse: newPassword })
+        : await signIn({ username: email.trim(), password, options: { authFlowType: 'USER_PASSWORD_AUTH' } });
       if (result.isSignedIn) {
-        const session = await fetchAuthSession();
-        const token = session.tokens?.accessToken?.toString();
-
-        if (!token) throw new Error('인증 토큰을 받지 못했습니다.');
-
-        await SecureStore.setItemAsync('accessToken', token);
-        router.replace('/');
+        await saveSession();
+        onSignedIn();
       } else if (result.nextStep.signInStep === 'CONFIRM_SIGN_IN_WITH_NEW_PASSWORD_REQUIRED') {
         setNeedsNewPassword(true);
-        setError('');
       } else {
-        setError(`추가 인증이 필요합니다: ${result.nextStep.signInStep}`);
+        setError('Your account requires an additional verification step.');
       }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : '로그인에 실패했습니다.');
+    } catch (cause) {
+      const name = cause instanceof Error ? cause.name : '';
+      if (name === 'NotAuthorizedException' || name === 'UserNotFoundException') {
+        setError('Check your email and password and try again.');
+      } else if (name === 'InvalidPasswordException') {
+        setError('Choose a password that meets your account’s password requirements.');
+      } else {
+        setError(needsNewPassword ? 'Unable to change your password. Try again.' : 'Unable to sign in. Try again.');
+      }
     } finally {
       setLoading(false);
     }
   };
 
-  const handleChangePassword = async () => {
-  if (!newPassword) {
-    setError('새 비밀번호를 입력해 주세요.');
-    return;
-  }
-
-  setLoading(true);
-  setError('');
-
-  try {
-    const result = await confirmSignIn({
-      challengeResponse: newPassword,
-    });
-
-    if (result.isSignedIn) {
-      const session = await fetchAuthSession();
-      const token = session.tokens?.accessToken?.toString();
-
-      if (!token) throw new Error('인증 토큰을 받지 못했습니다.');
-
-      await SecureStore.setItemAsync('accessToken', token);
-      router.replace('/');
-    } else {
-      setError(`추가 인증이 필요합니다: ${result.nextStep.signInStep}`);
-    }
-  } catch (err) {
-    setError(err instanceof Error ? err.message : '비밀번호 변경에 실패했습니다.');
-  } finally {
-    setLoading(false);
-  }
-};
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>AI Walking Air Purifier</Text>
-      <Text style={styles.subtitle}>Cognito 계정으로 로그인</Text>
-
-      <TextInput
-        style={styles.input}
-        placeholder="이메일"
-        autoCapitalize="none"
-        keyboardType="email-address"
-        value={email}
-        onChangeText={setEmail}
-      />
-
-      <TextInput
-        style={styles.input}
-        placeholder="비밀번호"
-        secureTextEntry
-        value={password}
-        onChangeText={setPassword}
-      />
-
-      {error !== '' && <Text style={styles.error}>{error}</Text>}
-
-    {needsNewPassword && (
-  <TextInput
-    style={styles.input}
-    placeholder="새 비밀번호"
-    secureTextEntry
-    value={newPassword}
-    onChangeText={setNewPassword}
-  />
-)}
-      <Pressable
-  style={styles.button}
-  onPress={needsNewPassword ? handleChangePassword : handleLogin}
-  disabled={loading}
->
-  {loading ? (
-    <ActivityIndicator color="#FFFFFF" />
-  ) : (
-    <Text style={styles.buttonText}>
-      {needsNewPassword ? '비밀번호 변경 후 로그인' : '로그인'}
-    </Text>
-  )}
-</Pressable>
-    </View>
+    <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        <View style={styles.identity}>
+          <Brand size={46}>LG Airy</Brand>
+          <Copy size={14} color={colors.muted}>AI Walking Air Purifier</Copy>
+          <Copy size={22} bold>{'A little movement.\nA breath of fresh air.'}</Copy>
+        </View>
+        <Card style={styles.form}>
+          <Copy size={20} bold>{needsNewPassword ? 'Set a new password' : 'Welcome home'}</Copy>
+          {!needsNewPassword && <>
+            <SignInField label="Email" placeholder="you@example.com" value={email} onChangeText={setEmail}
+              autoCapitalize="none" autoComplete="email" keyboardType="email-address" editable={!loading} />
+            <SignInField label="Password" placeholder="••••••••••" value={password} onChangeText={setPassword}
+              autoComplete="current-password" secureTextEntry editable={!loading} onSubmitEditing={submit} />
+          </>}
+          {needsNewPassword && <SignInField label="New Password" value={newPassword} onChangeText={setNewPassword}
+            autoComplete="new-password" secureTextEntry editable={!loading} onSubmitEditing={submit} />}
+          {error !== '' && <Copy color={colors.red}>{error}</Copy>}
+          <Button label={loading ? 'Signing In...' : needsNewPassword ? 'Set Password and Sign In' : 'Sign In'}
+            disabled={loading} onPress={submit} />
+        </Card>
+        <Copy size={12} color={colors.muted} style={styles.tagline}>Your home. Your air. In harmony.</Copy>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    padding: 24,
-    backgroundColor: '#FFFFFF',
-    gap: 16,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    textAlign: 'center',
-  },
-  subtitle: {
-    color: '#64748B',
-    textAlign: 'center',
-  },
+  screen: { flex: 1 },
+  content: { flexGrow: 1, paddingTop: 48, paddingHorizontal: 20, paddingBottom: 24, gap: 30 },
+  identity: { gap: 12, paddingTop: 16, paddingBottom: 20 },
+  form: { paddingHorizontal: 20, paddingVertical: 24, gap: 20 },
+  field: { gap: 8 },
   input: {
-    borderWidth: 1,
-    borderColor: '#CBD5E1',
-    borderRadius: 10,
-    padding: 14,
-    fontSize: 16,
+    minHeight: 52, paddingHorizontal: 18, color: colors.ink, fontFamily: 'AiryMedium', fontSize: 14,
+    backgroundColor: 'rgba(255,255,255,0.46)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.9)', borderRadius: 20,
   },
-  button: {
-    backgroundColor: '#2563EB',
-    padding: 15,
-    borderRadius: 10,
-    alignItems: 'center',
-  },
-  buttonText: {
-    color: '#FFFFFF',
-    fontWeight: 'bold',
-  },
-  error: {
-    color: '#DC2626',
-    textAlign: 'center',
-  },
+  tagline: { textAlign: 'center' },
 });
