@@ -89,8 +89,8 @@ Remaining validation includes testing Cognito sign-in and simulation controls to
 ## 6. Team Members
 
 | Member | Area | Responsibilities |
-|---|---|---|---|
-| Haewon Kwon | Simulation	| Environment modeling, pathfinding, movement, purification |
+| --- | --- | --- |
+| Haewon Kwon | Simulation | Environment modeling, pathfinding, movement, purification |
 | Dongjin Son | Mobile App | App development, UI/UX design, visualization, device control |
 | Yena Jo | Data & AI | Data generation, AI training, air quality prediction |
 
