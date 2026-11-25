@@ -8,16 +8,17 @@
 
 This project aims to develop a software-based simulation of an autonomous mobile air purifier that predicts future indoor air pollution and proactively moves to areas requiring air purification.
 
-The system integrates machine learning, autonomous pathfinding, and a mobile application to demonstrate proactive air purification in a virtual home environment.
+The system combines a virtual home, A* pathfinding, a Random Forest model, a FastAPI backend, and the LG Airy mobile app. The purifier uses forecasts to select destinations in Auto Mode and uses measured PM2.5 to determine whether to purify the air.
 
-This project is developed as part of the Software Engineering course in the Department of Information Systems at Hanyang University, in collaboration with LG Electronics.
+This project was developed as part of the Software Engineering course in the Department of Information Systems at Hanyang University, in collaboration with LG Electronics.
+
 
 ## 2. Key Technologies
 
 | Category | Technologies |
 |---|---|
 | Mobile Application | React Native, Expo, TypeScript |
-| Backend | Python, FastAPI |
+| Backend | Python, FastAPI, Uvicorn |
 | Machine Learning | scikit-learn (Random Forest) |
 | Data Processing | Pandas, NumPy |
 | Pathfinding | A* Algorithm |
@@ -26,18 +27,39 @@ This project is developed as part of the Software Engineering course in the Depa
 | UI/UX Design | Figma |
 | Development Tools | VS Code, ChatGPT(Codex) |
 | Version Control | Git, GitHub |
+| Authentication | Amazon Cognito, AWS Amplify |
+| Cloud Infrastructure | AWS EC2 |
 
 ## 3. Project Structure
 
-The following directory structure is planned and may be updated during development.
+The following tree shows the main directories and source files.
 
 ```text
-ai-mobile-air-purifier/
-├── mobile/          # React Native application
-├── backend/         # FastAPI backend
-├── ai/              # AI model
-├── simulation/      # Virtual environment simulation
-├── docs/            # Project reports and documentation
+lg-walking-air-purifier/
+├── ai/
+│   ├── generate_data.py          # Synthetic training data
+│   ├── train_model.py            # Random Forest training
+│   ├── predict.py                # PM2.5 forecasting
+│   └── policy_evaluation_report.md
+├── backend/
+│   └── main.py                   # FastAPI endpoints and simulation loop
+├── simulation/
+│   ├── house_map.json             # Virtual home layout
+│   ├── pathfinding.py            # A* navigation
+│   ├── simulator.py              # Movement, measurement, and purification
+│   └── controller.py             # AI destination selection
+├── mobile/
+│   └── src/
+│       ├── app/
+│       │   ├── login.tsx          # Cognito sign-in
+│       │   └── (main)/
+│       │       ├── index.tsx      # Home and simulation controls
+│       │       └── explore.tsx    # Activity history
+│       ├── components/airy/
+│       │   ├── ui.tsx             # Shared UI components
+│       │   └── floor-plan.tsx     # Map and live purifier position
+│       └── lib/simulation.ts      # Shared API client
+├── docs/                         # Course reports
 └── README.md
 ```
 
@@ -53,25 +75,24 @@ This repository is used for source code management, version control, and team co
 - Merge conflicts are resolved carefully to avoid overwriting other team members' work.
 - Project reports and documentation are maintained in the `docs/` directory.
 
-Detailed Git instructions are provided in Section 10.
 
 ## 5. Project Status
 
-**Current Stage: Core Feature Integration**
+**Current Stage: Integrated Prototype and Validation**
 
-The mobile application, FastAPI backend, AI prediction model, and autonomous navigation system have been successfully integrated.
+The mobile app, FastAPI backend, forecasting model, and simulation are integrated. The prototype supports initial patrol, room-level measurements, 30-minute PM2.5 forecasts, AI-based destination selection, manual movement, measurement-based purification, and activity history.
 
-The current prototype supports automatic initial patrol, room-based air quality measurement, 30-minute PM2.5 prediction, AI-based destination selection, and server-controlled autonomous movement.
+The LG Airy mobile interface now includes Figma-based Sign In, Home, and History screens. Home uses live server data and shows distinct states for Auto Mode, Manual Mode, loading, and connection failure. A paired evaluation of the AI policy and fixed patrol is available in ai/.
 
-The next development stages will focus on purification and replanning validation, activity history, UI/UX improvements, performance evaluation, and system testing.
+Remaining validation includes testing Cognito sign-in and simulation controls together on a physical device, as well as checking connection recovery during a demo.
 
 ## 6. Team Members
 
-| Member | Department | University | email |
+| Member | Area | Responsibilities |
 |---|---|---|---|
-| Haewon Kwon | Department of Information Systems | Hanyang University | hw030302@hanyang.ac.kr |
-| Dongjin Son | Department of Information Systems | Hanyang University | djson322@hanyang.ac.kr |
-| Yena Jo | Department of Information Systems | Hanyang University | yena1743@hanyang.ac.kr |
+| Haewon Kwon | Simulation	| Environment modeling, pathfinding, movement, purification |
+| Dongjin Son | Mobile App | App development, UI/UX design, visualization, device control |
+| Yena Jo | Data & AI | Data generation, AI training, air quality prediction |
 
 ## 7. Documentation
 
@@ -81,71 +102,49 @@ Document revisions and development progress will be tracked through Git commit h
 
 ## 8. How to Run
 
-### 8.1 Start the FastAPI Backend
+### 8.1 Hosted Backend
 
-Open a terminal and navigate to the project root directory.
+The FastAPI backend runs on Amazon EC2. The app connects to the hosted demo by default. To use a different deployment, set `EXPO_PUBLIC_SERVER_URL` in `mobile/.env.local`. If that deployment requires an API key header, set `EXPO_PUBLIC_API_KEY` there as well.
 
-```bash
-source backend/.venv/bin/activate
-python -m uvicorn backend.main:app --host 0.0.0.0 --port 8000
-```
+### 8.2 Mobile Application
 
-The backend server will run on port `8000`.
-
-API documentation is available at:
-
-`http://127.0.0.1:8000/docs`
-
-### 8.2 Start the Mobile Application
-
-Open a separate terminal.
+From the repository root, run the following commands.
 
 ```bash
 cd mobile
-npm install
+npm ci
 npx expo start
 ```
 
-Scan the QR code using Expo Go on an iPhone.
-
-**Network Requirements:**
-
-- The iPhone and development computer must be connected to the same Wi-Fi network.
-- The FastAPI backend must be running.
-- The `SERVER_URL` in `mobile/src/app/index.tsx` must match the development computer's local IP address.
-
-To check the local IP address on macOS:
-
-```bash
-ipconfig getifaddr en0
-```
-
-Example:
-
-```tsx
-const SERVER_URL =
-  Platform.OS === 'web'
-    ? 'http://127.0.0.1:8000'
-    : 'http://YOUR_LOCAL_IP:8000';
-```
-
-Replace `YOUR_LOCAL_IP` with the computer's current IP address.
+Scan the QR code to open the project in Expo Go, then sign in with a provisioned Cognito account. The phone needs internet access to reach the EC2 backend.
 
 ### 8.3 API Endpoints
 
 | Method | Endpoint | Description |
-|---|---|---|
-| GET | `/` | Check whether FastAPI is running |
-| GET | `/map` | Retrieve the virtual home map |
-| GET | `/status` | Retrieve the current state, measured air quality, AI predictions, and destination decisions |
-| GET | `/predict` | Retrieve 30-minute PM2.5 predictions |
-| POST | `/move` | Manually set a destination and calculate the movement path |
-| POST | `/step` | Advance the simulation by one step for testing |
-| POST | `/start` | Start or resume the simulation |
-| POST | `/pause` | Pause the simulation |
-| POST | `/reset` | Reset the simulation and AI decision data |
+| --- | --- | --- |
+| `GET` | `/` | Check whether the FastAPI server is running. |
+| `GET` | `/map` | Get the virtual home grid, room boundaries, and destination coordinates. |
+| `GET` | `/status` | Get the purifier’s position, remaining route, operating mode, measurements, forecasts, and latest AI decision. |
+| `GET` | `/predict` | Generate 30-minute PM2.5 forecasts from the current observations. |
+| `GET` | `/history` | Get recorded movement, measurement, purification, and simulation events. |
+| `POST` | `/mode` | Select Auto or Manual Mode. |
+| `POST` | `/move` | Request a destination in Manual Mode. |
+| `POST` | `/start` | Start or resume the simulation. |
+| `POST` | `/pause` | Pause the simulation. |
+| `POST` | `/reset` | Reset the simulation, event history, and AI state. |
+| `POST` | `/step` | Advance the simulation by one step for testing while it is running. |
 
-**Example movement request:**
+**Example mode selection request (`POST /mode`)**
+
+```json
+{
+  "mode": "manual"
+}
+```
+
+Supported modes are `auto` and `manual`.
+
+**Example movement request (`POST /move`)**
 
 ```json
 {
@@ -159,7 +158,8 @@ Supported rooms:
 - `kitchen`
 - `bedroom`
 
-The backend automatically advances the simulation while it is running. The mobile application retrieves the latest state through HTTP polling without repeatedly calling `/step`.
+The EC2 backend advances the running simulation automatically, and the mobile app polls for updates.
+
 ---
 
 ## 9. Current Implementation
@@ -179,150 +179,26 @@ The backend automatically advances the simulation while it is running. The mobil
 - Generation of 60 days of virtual indoor air quality data.
 - Random Forest model for 30-minute PM2.5 prediction.
 - Prediction based on time, room information, previous measurements, and measurement age.
-- Automatic prediction and destination evaluation every 10 simulation minutes when the purifier is not moving.
-- Destination selection based on predicted pollution levels and travel time.
-- Autonomous movement toward the selected destination.
+- Forecast evaluation at 10-minute simulation boundaries.
+- In Auto Mode, the controller selects a destination based on predicted pollution and travel time when forecasts are available and the purifier has no active route.
+- The AI policy and fixed patrol were compared across nine paired synthetic scenarios. The AI policy traveled less and slightly lowered mean PM2.5, while spending more time above the experimental threshold. [Policy evaluation report](ai/policy_evaluation_report.md)
 
 ### 9.3 Mobile Application
 
-- Interactive grid-based home map.
-- Automatic visualization of the purifier's current position.
-- Start, pause, and reset controls connected to the backend.
-- Display of the current room, coordinates, operating status, and remaining movement steps.
-- Display of the current simulation time.
-- Separate display of measured and AI-predicted PM2.5 values.
-- Display of AI-selected destinations and decision reasons.
-- Server connection error messages.
+- Cognito sign-in and Figma-based Home and History screens.
+- Live floor plan showing the purifier's position, destination, and route when available.
+- Device status, simulation time, measured and forecast PM2.5, and AI destination decisions.
+- Auto and Manual modes, manual destination selection, and start, pause, and reset controls.
+- Loading and connection failure states with a reconnect action.
+- Activity history showing movement, measurement, and purification events.
 
 ### 9.4 Backend Integration
 
-- FastAPI integration with the simulator, AI prediction model, and destination controller.
-- Automatic simulation progression through a server-side loop.
-- REST APIs for simulation control and state retrieval.
-- Storage of the latest AI prediction and destination decision in memory.
-- Automatic state synchronization through HTTP polling.
-- Error handling for invalid requests and simulation failures.
+- FastAPI runs a shared simulation and serves state, forecasts, and history through REST APIs. The mobile app polls for updates.
+- A mode change requested during movement takes effect after the active route finishes.
+- The backend stores simulation state, event history, and AI results in memory. A reset or server restart clears the previous run's history.
 
 ### 9.5 Future Development
 
-- Validation of arrival, measurement, purification, and replanning.
-- Separate measurement status visualization.
-- Manual movement controls in the mobile application.
-- Movement, measurement, and purification event history.
-- UI/UX design improvements and screen navigation.
-- Mobile connection recovery and restart testing.
-- Performance comparison with a fixed patrol baseline.
-- KPI evaluation and system optimization.
-- Final integration testing, demonstration, and documentation.
-
-**Current Limitations:** Core AI prediction and autonomous movement have been integrated and verified. However, the complete purification and replanning cycle requires further validation. Activity history, manual movement controls in the mobile application, and detailed UI/UX design are not yet completed. HTTP polling is currently used instead of WebSocket communication.
-
----
-
-## 10. Git Workflow
-
-### 10.1 Navigate to the Project Directory
-
-Open a terminal and navigate to your local project directory.
-
-```bash
-cd lg-walking-air-purifier
-```
-
-Make sure you are in the project root directory before running Git commands.
-
-### 10.2 Check Modified Files
-
-```bash
-git status
-```
-
-Review the modified and untracked files before staging changes.
-
-### 10.3 Stage Changes
-
-To stage all changes:
-
-```bash
-git add .
-```
-
-To stage a specific file:
-
-```bash
-git add mobile/src/app/index.tsx
-```
-
-Avoid committing unnecessary files, virtual environments, API keys, or environment variables.
-
-### 10.4 Commit Changes
-
-```bash
-git commit -m "Describe your changes"
-```
-
-Example:
-
-```bash
-git commit -m "Add air quality UI and position polling"
-```
-
-Use meaningful commit messages that describe the implemented features.
-
-### 10.5 Pull the Latest Changes
-
-Before pushing, synchronize with the remote repository.
-
-```bash
-git pull --rebase origin main
-```
-
-If a merge conflict occurs, resolve the conflicting files and continue the rebase.
-
-```bash
-git add <resolved-file>
-git rebase --continue
-```
-
-Do not push until all conflicts have been resolved.
-
-### 10.6 Push to GitHub
-
-```bash
-git push origin main
-```
-
-### 10.7 Verify the Repository Status
-
-```bash
-git status
-```
-
-A successful synchronization should display:
-
-```text
-On branch main
-Your branch is up to date with 'origin/main'.
-nothing to commit, working tree clean
-```
-
-### 10.8 Useful Git Commands
-
-| Command | Description |
-|---|---|
-| `git status` | Check modified and staged files |
-| `git add .` | Stage all changes |
-| `git commit -m "message"` | Create a commit |
-| `git pull --rebase origin main` | Integrate the latest remote changes |
-| `git push origin main` | Upload local commits |
-| `git fetch origin` | Update remote repository information |
-| `git log --oneline -10` | View the latest 10 commits |
-| `git log --oneline --all --graph` | View the commit history across branches |
-
-**Important Notes:**
-
-- Always check `git status` before committing.
-- Pull the latest changes before pushing.
-- Never use `git push --force` on the shared `main` branch.
-- Resolve merge conflicts carefully to avoid overwriting teammates' work.
-- Use feature branches and pull requests when required by the team's collaboration workflow.
+- Verify Cognito sign-in, simulation controls, and reconnection on a physical device.
+- Validate the full arrival, measurement, purification, and replanning cycle during demo testing.
