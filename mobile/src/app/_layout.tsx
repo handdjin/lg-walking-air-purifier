@@ -46,6 +46,7 @@ export default function RootLayout() {
               </Stack.Protected>
               <Stack.Protected guard={signedIn === false}>
                 <Stack.Screen name="login" />
+                <Stack.Screen name="signup" />
               </Stack.Protected>
             </Stack>
           </SignInContext.Provider>
