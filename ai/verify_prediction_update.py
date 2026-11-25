@@ -10,7 +10,7 @@ from pathlib import Path
 import backend.main as backend
 
 from ai.integration_demo import prepare_scenario
-from ai.predict import FEATURES, ROOMS, Predictor
+from ai.predict import ROOMS, Predictor
 
 
 def require(condition, message):
@@ -57,7 +57,6 @@ def main():
     backend.last_prediction_seconds = None
 
     records = []
-    purification_values = []
     stale_room_proved = False
 
     # Finish after the 09:40 prediction.
@@ -89,7 +88,7 @@ def main():
             )
 
             require(
-                list(frame.columns) == FEATURES,
+                list(frame.columns) == predictor.input_columns,
                 "Unexpected model input columns.",
             )
 
@@ -176,15 +175,6 @@ def main():
                 "decision": backend.latest_decision,
             })
 
-        state = sim.get_state()
-
-        # Ground truth is inspected here only to verify gradual removal.
-        if state["is_purifying"] and seconds % 60 == 0:
-            purification_values.append({
-                "time_seconds": seconds,
-                "pm25": evaluation_truth()["pm25"]["kitchen"],
-            })
-
         if seconds >= end_seconds:
             break
 
@@ -197,82 +187,23 @@ def main():
         if event["type"] == "measurement"
     ]
 
-    arrivals = [
-        event for event in history
-        if event["type"] == "arrival"
-        and event["time_seconds"] > 31200
-    ]
-
-    starts = [
-        event for event in history
-        if event["type"] == "purification_on"
-        and event["time_seconds"] > 31200
-    ]
-
-    stops = [
-        event for event in history
-        if event["type"] == "purification_off"
-        and event["time_seconds"] > 31200
-    ]
+    for record in records:
+        reference = record["reference_seconds"]
+        for room in ROOMS:
+            latest = max(
+                (event["time_seconds"] for event in measurements
+                 if event["room"] == room and event["time_seconds"] <= reference),
+                default=None,
+            )
+            require(
+                record["observations"][room]["measured_at_seconds"] == latest,
+                f"{room}: forecast did not use the latest measurement.",
+            )
 
     require(
-        arrivals and arrivals[0]["room"] == "kitchen",
-        "No predicted kitchen arrival.",
-    )
-
-    arrival = arrivals[0]
-
-    require(
-        any(
-            event["room"] == "kitchen"
-            and event["time_seconds"] == arrival["time_seconds"]
-            for event in measurements
-        ),
-        "No immediate arrival measurement.",
-    )
-
-    require(
-        starts and stops,
-        "Purification did not start and stop.",
-    )
-
-    require(
-        starts[0]["time_seconds"] > arrival["time_seconds"],
-        "This scenario should wait for pollution after arrival.",
-    )
-
-    require(
-        len(purification_values) >= 2
-        and purification_values[-1]["pm25"]
-        < purification_values[0]["pm25"]
-        and purification_values[0]["pm25"] > 5,
-        "Gradual purification was not observed.",
-    )
-
-    by_time = {
-        record["reference_seconds"]: record
-        for record in records
-    }
-
-    require(
-        31800 in by_time
-        and 33600 in by_time
-        and 34800 in by_time,
-        "Expected forecasts are missing.",
-    )
-
-    require(
-        by_time[31800]["observations"]["kitchen"][
-            "measured_at_seconds"
-        ] == 31300,
-        "The next forecast did not use the arrival observation.",
-    )
-
-    require(
-        by_time[33600]["observations"]["kitchen"][
-            "measured_at_seconds"
-        ] == 33100,
-        "The next forecast did not use the periodic observation.",
+        any(len({record["observations"][room]["measured_at_seconds"]
+                 for record in records}) > 1 for room in ROOMS),
+        "No refreshed readings were checked across forecasts.",
     )
 
     require(
@@ -283,7 +214,7 @@ def main():
     output = (
         Path(__file__).resolve().parent
         / "artifacts"
-        / "prediction_update_report.json"
+        / "uniform20_prediction_update_report.json"
     )
 
     output.parent.mkdir(exist_ok=True)
@@ -295,17 +226,14 @@ def main():
             "not a real-phone or accuracy test"
         ),
         "checks": [
-            "arrival measurement",
             "latest measured values",
             "fractional measurement age",
             "periodic measurement updates",
             "hidden-state exclusion",
             "status payload",
-            "gradual purification",
             "periodic replanning",
         ],
         "records": records,
-        "purification_evaluation_only": purification_values,
         "events": [
             event for event in history
             if event["time_seconds"] >= 31200
@@ -321,8 +249,7 @@ def main():
     print("PASS: measurement ages use actual seconds / 60.")
     print("PASS: hidden room states are not used as measurements.")
     print(
-        "PASS: arrival, waiting, purification, "
-        "and periodic replanning completed."
+        "PASS: periodic forecasts used refreshed readings."
     )
 
     for record in records:

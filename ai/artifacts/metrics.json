@@ -5,26 +5,29 @@
     "hour",
     "minute",
     "last_measured_pm25",
-    "minutes_since_measurement"
+    "minutes_since_measurement",
+    "days_observed",
+    "historical_mean",
+    "polluted_day_ratio"
   ],
   "label": "target_pm25_30min",
   "selected_max_depth": null,
-  "validation_mae": 1.0839109878850026,
-  "test_mae": 1.0984369859560288,
-  "baseline_test_mae": 1.6387811234232719,
+  "validation_mae": 0.5708855285846772,
+  "test_mae": 0.5707486909894713,
+  "baseline_test_mae": 1.3973634829716641,
   "per_room_mae": {
-    "bedroom": 0.43152887284509317,
-    "kitchen": 2.4009502175409883,
-    "living_room": 0.4628318674820047
+    "bedroom": 0.2606660861707759,
+    "kitchen": 1.209207660168513,
+    "living_room": 0.24237232662912464
   },
   "per_pattern_mae": {
-    "basic": 0.9317348365409712,
-    "irregular": 1.2153083248513816,
-    "slow": 1.1504170460075944
+    "basic": 0.524044797849644,
+    "irregular": 0.6614408377865092,
+    "slow": 0.527221583833579
   },
   "rows": {
-    "train": 17358,
-    "validation": 3714,
-    "test": 3720
+    "train": 104148,
+    "validation": 22284,
+    "test": 22320
   }
 }

@@ -10,7 +10,7 @@ from .pathfinding import find_path
 
 TICK_SECONDS = 10
 MEASUREMENT_INTERVAL_SECONDS = 10 * 60
-PURIFY_ON = 35
+PURIFY_ON = 20
 PURIFY_OFF = 15
 
 
@@ -32,10 +32,32 @@ class Simulator:
             "seed": seed, "day_index": day_index, "late_dinner": late_dinner,
             "events": None if events is None else tuple(events),
         }
+        self._initial_day_index = day_index
         self.reset()
 
     def reset(self):
         """Reset position, destination, route, time, environment, and observations."""
+        self.simulation_day = 1
+        self.previous_days = deque(maxlen=14)
+        self._environment_options["day_index"] = self._initial_day_index
+        return self._begin_day()
+
+    def next_day(self):
+        """Carry measured history into the next simulated day of this home."""
+        if not self.get_state()["finished"]:
+            raise ValueError("The current day is still running.")
+        readings = {room: [] for room in ROOM_NAMES}
+        for entry in self._history:
+            if entry["type"] == "measurement" and entry["time_seconds"] < 86400:
+                readings[entry["room"]].append((entry["time_seconds"], entry["pm25"]))
+        self.previous_days.append(readings)
+        self.simulation_day += 1
+        self._environment_options["day_index"] += 1
+        self._begin_day()
+        return self.start()
+
+    def _begin_day(self):
+        self.last_arrival_seconds = None
         environment = AirEnvironment(**self._environment_options)
         self._position = self._map.start
         self._destination = None
@@ -116,6 +138,7 @@ class Simulator:
                  "age_seconds": None}
             )
         return {
+            "simulation_day": self.simulation_day,
             "current_room": room,
             "room_name": self._map.rooms[room].name if room else None,
             "position": list(self._position),
@@ -193,6 +216,7 @@ class Simulator:
             self._position = self._path.popleft()
         self._seconds = next_seconds
         if moving and not self._path:
+            self.last_arrival_seconds = self._seconds
             self._record("arrival", room=self._map.room_at(self._position))
             self._measure_current_room("arrival")
         elif not self._path and room is not None:

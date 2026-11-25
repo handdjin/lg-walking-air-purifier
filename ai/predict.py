@@ -19,18 +19,38 @@ FEATURES = [
 ]
 
 
+HISTORY_FEATURES = ["days_observed", "historical_mean", "polluted_day_ratio"]
+
+
+def recent_features(previous_days, room, target_minute):
+    peaks = []
+    for readings in previous_days:
+        values = [pm for second, pm in readings[room]
+                  if abs(second - target_minute * 60) <= 900]
+        if values:
+            peaks.append(max(values))
+    if not peaks:
+        return [0, -1, -1]
+    return [len(peaks), sum(peaks) / len(peaks),
+            sum(value >= 20 for value in peaks) / len(peaks)]
+
+
 class Predictor:
     def __init__(self, model_path=None):
         if model_path is None:
             model_path = (
                 Path(__file__).resolve().parent
                 / "artifacts"
-                / "pm25_model.joblib"
+                / "uniform20_model.joblib"
             )
 
         self.model = joblib.load(model_path)
+        self.input_columns = list(self.model.feature_names_in_)
+        if self.input_columns not in (FEATURES, FEATURES + HISTORY_FEATURES):
+            raise ValueError("Unexpected PM2.5 model input columns")
+        self.model.steps[-1][1].n_jobs = 1
 
-    def predict_rooms(self, now_minute, observations):
+    def predict_rooms(self, now_minute, observations, previous_days=()):
         """
         Predict concentrations 30 minutes ahead for all three rooms
         using the same reference time.
@@ -100,6 +120,8 @@ class Predictor:
                 value,
                 now_minute - measured,
             ])
+            if self.input_columns == FEATURES + HISTORY_FEATURES:
+                rows[-1].extend(recent_features(previous_days, room, now_minute + 30))
 
         if missing:
             status = "initial_patrol_required"
@@ -111,7 +133,7 @@ class Predictor:
         values = [None, None, None]
 
         if status == "ok":
-            inputs = pd.DataFrame(rows, columns=FEATURES)
+            inputs = pd.DataFrame(rows, columns=self.input_columns)
             values = self.model.predict(inputs).tolist()
 
         return {
@@ -161,6 +183,7 @@ def predict_from_simulator(predictor, simulator):
     return predictor.predict_rooms(
         now_minute=seconds // 60,
         observations=observations,
+        previous_days=simulator.previous_days,
     )
 
 

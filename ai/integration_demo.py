@@ -87,6 +87,7 @@ def main():
         response = decide_and_move(
             sim,
             forecast["predictions"],
+            threshold=20,
         )
 
         decision = response["decision"]

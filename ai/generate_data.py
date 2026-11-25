@@ -1,10 +1,27 @@
 import csv
 import json
 import random
+from collections import deque
+from tempfile import TemporaryDirectory
 from datetime import datetime
 from pathlib import Path
 
 from simulation import Simulator
+from simulation.environment import PollutionEvent
+from ai.predict import FEATURES, HISTORY_FEATURES, recent_features
+
+HOMES = {
+    "original": None,
+    "late_evening": [("kitchen", "cooking", 570, 630), ("kitchen", "cooking", 1305, 1335), ("living_room", "cleaning", 480, 510), ("bedroom", "bedding", 630, 660)],
+    "early_five": [("kitchen", "cooking", 285, 315), ("kitchen", "cooking", 1005, 1035),
+                   ("living_room", "cleaning", 405, 435), ("bedroom", "bedding", 345, 375)],
+    "noon_night": [("kitchen", "cooking", 705, 735), ("kitchen", "cooking", 1365, 1395),
+                   ("living_room", "cleaning", 885, 915), ("bedroom", "bedding", 705, 735)],
+    "one_am": [("kitchen", "cooking", 45, 75), ("kitchen", "cooking", 825, 855),
+               ("living_room", "cleaning", 1305, 1335), ("bedroom", "bedding", 1005, 1035)],
+    "ten_am": [("kitchen", "cooking", 585, 615), ("kitchen", "cooking", 945, 975),
+               ("living_room", "cleaning", 45, 75), ("bedroom", "bedding", 1365, 1395)],
+}
 
 
 # ---------- Generation settings ----------
@@ -36,10 +53,12 @@ def clock(seconds):
     return f"{seconds // 3600:02d}:{seconds % 3600 // 60:02d}"
 
 
-def save_csv(filename, rows):
+def append_csv(folder, filename, rows):
     """Save records to a CSV file."""
-    with (OUTPUT / filename).open(
-        "w",
+    path = folder / filename
+    new_file = not path.exists()
+    with path.open(
+        "a",
         newline="",
         encoding="utf-8-sig",
     ) as file:
@@ -47,13 +66,15 @@ def save_csv(filename, rows):
             file,
             fieldnames=list(rows[0]),
         )
-        writer.writeheader()
+        if new_file:
+            writer.writeheader()
         writer.writerows(rows)
 
 
 # ---------- Data generation ----------
 
-def generate():
+def generate_home(home_id, windows, seed, folder):
+    previous_days = deque(maxlen=14)
     truth = []
     observations = []
     samples = []
@@ -73,13 +94,21 @@ def generate():
 
         metadata = {
             "run_id": RUN_ID,
+            "home_id": home_id,
             "scenario_day": day,
         }
 
         visit_rng = random.Random(VISIT_SEED + day)
 
         # Use Part B's environment, movement, sensing, and purification.
+        rng = random.Random(seed + day)
+        activities = []
+        for room, activity, low, high in windows or ():
+            start = rng.randint(low, high)
+            duration = rng.randint(10, 20) if activity == "cooking" else rng.randint(5, 10)
+            activities.append(PollutionEvent(room, activity, start, start + duration))
         sim = Simulator(
+            events=activities if windows is not None else None,
             seed=EVENT_SEED,
             day_index=day - 1,
             late_dinner=day in SHIFTED_TEST_DAYS,
@@ -230,7 +259,9 @@ def generate():
                 (target_seconds, row["room_id"])
             ]
 
+            row.update(zip(HISTORY_FEATURES, recent_features(previous_days, row["room_id"], target_seconds // 60)))
         samples.extend(daily_samples)
+        readings = {room: [] for room in ROOMS}
 
         # Collect the complete history once per day.
         for entry in sim.get_history():
@@ -249,6 +280,7 @@ def generate():
                 entry["type"] == "measurement"
                 and seconds < DAY_SECONDS
             ):
+                readings[entry["room"]].append((seconds, entry["pm25"]))
                 observations.append({
                     **metadata,
                     "measured_at": clock(seconds),
@@ -258,27 +290,10 @@ def generate():
                     "measured_pm25": entry["pm25"],
                 })
 
-        print(
-            f"Day {day}/60 complete: {pattern}",
-            flush=True,
-        )
+        previous_days.append(readings)
 
     if len(truth) != 25920:
         raise ValueError("Unexpected ground-truth record count.")
-
-    # Preserve previous data after successful simulation.
-    if OUTPUT.exists():
-        stamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
-        backup = ROOT / f"data_backup_{stamp}"
-
-        OUTPUT.rename(backup)
-
-        print("Previous data preserved at:", backup)
-
-    OUTPUT.mkdir(parents=True)
-
-    # ---------- Save datasets ----------
-
     datasets = [
         ("ground_truth.csv", truth),
         ("observations.csv", observations),
@@ -288,7 +303,7 @@ def generate():
     ]
 
     for filename, rows in datasets:
-        save_csv(filename, rows)
+        append_csv(folder, filename, rows)
 
     for split in ["train", "validation", "test"]:
         selected = [
@@ -296,47 +311,29 @@ def generate():
             if row["split"] == split
         ]
 
-        save_csv(f"{split}.csv", selected)
+        append_csv(folder, f"{split}.csv", selected)
 
         print(split, len(selected), "rows")
 
-    # Store shared environment settings and maps for reproduction.
-    config = {
-        "version": "simulator-generator-v2",
-        "run_id": RUN_ID,
-        "days": 60,
-        "event_seed": EVENT_SEED,
-        "event_day_index": "scenario_day - 1",
-        "visit_seed_base": VISIT_SEED,
-        "visit_seed_rule": "visit_seed_base + scenario_day",
-        "shifted_test_days": SHIFTED_TEST_DAYS,
-        "patrol_interval": "arrival-to-arrival including travel",
-        "timestamp_format":
-            "HH:MM; exact minute-aligned patrol measurements",
-        "features": [
-            "room_id",
-            "hour",
-            "minute",
-            "last_measured_pm25",
-            "minutes_since_measurement",
-        ],
-        "label": "target_pm25_30min",
-        "scenarios": scenarios,
-    }
+    return scenarios
 
-    (OUTPUT / "config.json").write_text(
-        json.dumps(
-            config,
-            indent=2,
-            ensure_ascii=False,
-        ),
-        encoding="utf-8",
-    )
 
-    print("Ground-truth records:", len(truth))
-    print("Observation records:", len(observations))
-    print("AI samples:", len(samples))
-    print("Output directory:", OUTPUT)
+def generate():
+    with TemporaryDirectory(dir=ROOT) as temp:
+        folder = Path(temp) / "data"
+        folder.mkdir()
+        scenarios = []
+        for index, (home, windows) in enumerate(HOMES.items()):
+            scenarios.extend(generate_home(home, windows, 1000 + index * 100, folder))
+            print(f"Generated {home}: 60 days", flush=True)
+        config = {"homes": list(HOMES), "days_per_home": 60,
+                  "features": FEATURES + HISTORY_FEATURES,
+                  "label": "target_pm25_30min", "scenarios": scenarios}
+        (folder / "config.json").write_text(json.dumps(config, indent=2))
+        if OUTPUT.exists():
+            stamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+            OUTPUT.rename(ROOT / f"data_backup_{stamp}")
+        folder.rename(OUTPUT)
 
 
 if __name__ == "__main__":

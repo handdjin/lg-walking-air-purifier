@@ -1,14 +1,3 @@
-FEATURES = [
-    "room_id",
-    "hour",
-    "minute",
-    "last_measured_pm25",
-    "minutes_since_measurement",
-]
-
-LABEL = "target_pm25_30min"
-
-
 # Model training, evaluation, and saving
 import json
 from pathlib import Path
@@ -27,13 +16,9 @@ from sklearn.preprocessing import OneHotEncoder
 
 ROOT = Path(__file__).resolve().parent
 
-FEATURES = [
-    "room_id",
-    "hour",
-    "minute",
-    "last_measured_pm25",
-    "minutes_since_measurement",
-]
+from ai.predict import FEATURES as BASE_FEATURES, HISTORY_FEATURES
+
+FEATURES = BASE_FEATURES + HISTORY_FEATURES
 
 LABEL = "target_pm25_30min"
 
@@ -45,6 +30,10 @@ def load_split(name, first_day, last_day):
     path = ROOT / "data" / f"{name}.csv"
     data = pd.read_csv(path)
 
+    expected_days = set(range(first_day, last_day + 1))
+    if data.home_id.nunique() != 6 or any(set(days) != expected_days
+            for _, days in data.groupby("home_id").scenario_day):
+        raise ValueError("Missing days or homes in " + name)
     if data.empty:
         raise ValueError(f"{name}: No data found.")
 
@@ -59,7 +48,7 @@ def load_split(name, first_day, last_day):
 
     numeric = data[FEATURES[1:] + [LABEL]].to_numpy(dtype=float)
 
-    if not np.isfinite(numeric).all() or (numeric < 0).any():
+    if not np.isfinite(numeric).all() or (data[BASE_FEATURES[1:] + [LABEL]] < 0).any().any():
         raise ValueError(
             f"{name}: Missing, negative, or invalid numeric values."
         )
@@ -96,7 +85,7 @@ def load_split(name, first_day, last_day):
         )
 
     duplicate = data.duplicated(
-        ["run_id", "scenario_day", "prediction_time", "room_id"]
+        ["home_id", "run_id", "scenario_day", "prediction_time", "room_id"]
     )
 
     if duplicate.any():
@@ -132,7 +121,7 @@ def make_model(max_depth):
                 max_depth=max_depth,
                 min_samples_leaf=3,
                 random_state=42,
-                n_jobs=-1,
+                n_jobs=2,
             ),
         ),
     ])
@@ -233,7 +222,8 @@ def main():
     # Save preprocessing and the model together.
     joblib.dump(
         best_model,
-        output / "pm25_model.joblib",
+        output / "uniform20_model.joblib",
+        compress=3,
     )
 
     results.to_csv(

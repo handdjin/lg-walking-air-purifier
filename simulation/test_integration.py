@@ -111,12 +111,12 @@ class IntegratedTests(unittest.TestCase):
         self.assertEqual(len([e for e in sim.get_history() if e["type"] == "measurement"]), count)
 
     def test_automatic_on_off_only_from_measurements(self):
-        sim = Simulator(events=[PollutionEvent("living_room", "cleaning", 0, 20)])
+        sim = Simulator(events=[PollutionEvent("living_room", "cleaning", 6, 20)])
         sim.start()
         run_seconds(sim, 600)
-        self.assertFalse(sim.get_state()["is_purifying"])  # 10-minute reading is below 35
+        self.assertFalse(sim.get_state()["is_purifying"])  # 10-minute reading is below 20
         state = run_seconds(sim, 600)
-        self.assertGreaterEqual(state["observations"]["living_room"]["pm25"], 35)
+        self.assertGreaterEqual(state["observations"]["living_room"]["pm25"], 20)
         self.assertEqual(state["status"], "purifying")
         self.assertTrue(state["is_purifying"])
         before = sim.get_ground_truth()["pm25"]["living_room"]

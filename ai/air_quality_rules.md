@@ -15,9 +15,9 @@ This document defines the shared rules for Data and AI part and Air Quality Simu
 | Environment update interval | 1 minute |
 | Ground-truth recording interval | 10 minutes |
 | AI sample interval | 10 minutes, after the initial patrol and subject to label availability |
-| Daily initialization | Start in the living room at 00:00; initialize all room concentrations to 10 and clear observation state |
+| Daily initialization | Start in the living room at 00:00; initialize all room concentrations to 10 and clear the current day’s observations. The app retains up to 14 completed days of measurements |
 
-### Pollution events
+### Pollution events for the original home
 
 | Room | Daily event | Start-time range | Duration | Increase per active minute |
 | --- | --- | --- | --- | --- |
@@ -25,6 +25,10 @@ This document defines the shared rules for Data and AI part and Air Quality Simu
 | Kitchen | Dinner cooking, once | 18:00–20:00 | 10–20 minutes | 3 |
 | Living room | Cleaning, once | 13:00–17:00 | 5–10 minutes | 2 |
 | Bedroom | Bedding arrangement, once | 07:00–10:00 | 5–10 minutes | 2 |
+
+The dataset also includes five other home schedules. All six use the same
+pollution rates and duration ranges. See the `HOMES` table in
+[generate_data.py](generate_data.py) for their start-time ranges.
 
 - Randomly select each start time and duration within its range at minute resolution.
 - Events are active from the start time up to, but not including, the end time.
@@ -45,23 +49,23 @@ C1 = C + E
 C2 = C1 - max(C1 - 10, 0) * 0.01
 
 If purification is active:
-    next_concentration = max(5, C2 * 0.95)
+    next_concentration = max(5, C2 * 0.95 ** (purifying_seconds / 60))
 Otherwise:
     next_concentration = C2
 ```
 
-Natural decay also applies during pollution events. Concentrations at or below 10 do not decrease through natural decay and are not raised back to 10.
+Count only the seconds spent purifying in that room during the minute. Natural decay also applies during pollution events. Concentrations at or below 10 do not decrease through natural decay and are not raised back to 10.
 
 Calculate a 10-minute change by applying the one-minute update ten times with the appropriate conditions for each minute.
 
 ### Purification control
 
-- Turn purification on when the measured concentration is at least 35.
+- Turn purification on when the measured concentration is at least 20.
 - Turn it off when a new measurement during purification is at most 15.
-- Between 15 and 35, retain the existing on/off state.
+- Between 15 and 20, retain the existing on/off state.
 - Purification affects only the occupied room and stops affecting that room when the purifier leaves.
 - Do not purify during movement.
-- Do not delay scheduled visits because purification is active.
+- Training visits follow their schedule. In the app, additional patrol waits while the purifier is purifying.
 
 These values are experimental assumptions, not product specifications or health standards.
 
@@ -93,8 +97,13 @@ One dataset row represents one prediction for one room, 30 minutes ahead.
 | `minute` | Minute of the prediction reference time |
 | `last_measured_pm25` | Latest observed PM2.5 for the target room |
 | `minutes_since_measurement` | Minutes since that observation |
+| `days_observed` | Number of previous days with a reading in the matching window |
+| `historical_mean` | Mean of the daily highest readings in that window |
+| `polluted_day_ratio` | Fraction of measured days whose highest reading was at least 20 |
 
-Exclude weekday from the first model because the pollution rules do not vary by weekday.
+For the recent history features, use only this home and room, up to 14 completed
+days, and readings within 15 minutes on either side of the forecast target time.
+When no day has a reading, use `0, -1, -1`. Exclude weekday.
 
 Store the label separately as:
 
@@ -125,6 +134,7 @@ This separation prevents hidden simulator information from entering the model in
 | Column | Meaning | Example |
 | --- | --- | --- |
 | `run_id` | Simulation execution identifier | `run_001` |
+| `home_id` | Home schedule identifier | `original` |
 | `scenario_day` | Virtual day number within the 60-day dataset | `8` |
 | `timestamp` | Virtual time of the ground-truth state | `18:30` |
 | `room_id` | Room identifier | `kitchen` |
@@ -137,6 +147,7 @@ Use this record to construct labels and evaluate results.
 | Column | Meaning | Example |
 | --- | --- | --- |
 | `run_id` | Simulation execution identifier | `run_001` |
+| `home_id` | Home schedule identifier | `original` |
 | `scenario_day` | Virtual day number | `8` |
 | `measured_at` | Virtual measurement time | `18:30` |
 | `room_id` | Measured room | `kitchen` |
@@ -152,8 +163,6 @@ Use this record to construct model inputs and control measurement-based purifica
 - For other rooms, retain the last measurement and its time without refreshing them from hidden ground truth.
 
 The first version adds no sensor error. Therefore, a measurement equals the ground-truth concentration for that room at that instant. However, observation records contain only actual measurements, not all room states.
-
-The proposed filenames and column names should be confirmed by A and B before implementation.
 
 ## 5. Rooms Without an Initial Measurement
 
@@ -179,7 +188,7 @@ At the start of each day, initialize ground-truth concentrations to 10 and clear
 
 ## 6. Training, Validation, and Test Split
 
-Generate 60 virtual days, then assign records to the following subsets.
+Generate 60 virtual days per home across six activity schedules, then assign records to the following subsets.
 
 ### Patrol schedule
 
@@ -191,53 +200,45 @@ Repeat daily patterns:
 
 **Day 1: basic → Day 2: slow → Day 3: irregular → repeat**
 
-| Pattern | Interval until arrival at the next room | Total days |
+| Pattern | Interval until arrival at the next room | Days per home |
 | --- | --- | --- |
 | Basic | 10 minutes | 20 |
 | Slow | 20 minutes | 20 |
 | Irregular | Randomly select 10, 20, or 30 minutes for each interval | 20 |
 
-These intervals are not travel time alone. The initial generator simplifies movement as a room change at the arrival time.
+The intervals run from one arrival to the next. The generator uses the simulator’s route and departs early enough to arrive on schedule.
 
 ### Data allocation
 
-| Subset | Virtual days | Days per patrol pattern | Purpose |
+| Subset | Virtual days per home | Days per pattern per home | Purpose |
 | --- | --- | --- | --- |
 | Training | 1–42 | 14 each | Learn input–label relationships |
 | Validation | 43–51 | 3 each | Select model settings |
 | Final test | 52–60 | 3 each | Evaluate the selected model |
 
-- Train one model using training samples from all three patrol patterns.
+- Train one Random Forest model across all six homes and all three patrol patterns.
 - Keep all records from one day in the same subset; do not randomly split rows.
 - Exclude samples before the initial patrol is complete or whose targets cross the daily boundary.
 - Do not use final-test data for training or model selection.
-- On selected test days, change an activity pattern to evaluate robustness, such as moving dinner cooking to 20:00–22:00.
+- For the original home, move dinner cooking to 20:00–22:00 on days 55–57.
 - Record the selected dates and changes before inspecting model training results.
 
 The planned ground-truth table contains:
 
-**60 days × 144 recording times per day × 3 rooms = 25,920 rows.**
+**6 homes × 60 days × 144 recording times per day × 3 rooms = 155,520 rows.**
 
 This is neither the number of sensor observations nor the final number of AI samples.
 
 ## 7. Shared Air Quality Interface
 
-### Proposed interface
+Training and the app share the same simulator and the one-minute
+`calculate_pm25` function in [environment.py](../simulation/environment.py).
+Training uses separate seeds for activity schedules and irregular visits.
 
-```python
-step_pm25(current_pm25, event_increase, purifying)
-```
+## 8. Automatic operation in the app
 
-| Parameter or output | Meaning |
-| --- | --- |
-| `current_pm25` | Concentration before the update |
-| `event_increase` | Pollution increase for the current minute |
-| `purifying` | Whether purification is active in that room for the current minute |
-| Return value | Concentration one minute later, calculated using Section 1 |
-
-- Implement the function once and reuse it in both components.
-- Apply it ten times to calculate a 10-minute change.
-- Share event-generation, sensing, purification-control, and initialization rules.
-- Use separate random seeds for pollution events and irregular visits. A seed makes random selections reproducible.
-- Record the rules, seeds, and scenario version.
-- When actual movement is integrated, measure at actual arrival times and exclude purification during travel. Regenerate data if necessary.
+- After measuring all rooms, make a 30-minute forecast every 10 virtual minutes.
+- For automatic movement, consider reachable rooms with a predicted PM2.5 of at least 20.
+- When AI selects no destination and purification is off, check the oldest reading in another room. The reading must be at least 2 hours old in the first seven days of use, or 3 hours old from day eight.
+- Shift the patrol checks within each 10-minute block by `((day - 1) * 3) % 10` minutes. After an automatic arrival and once all rooms have readings, allow at least 10 minutes for a follow-up measurement before another automatic departure.
+- The server keeps the last 14 completed days of measurements in memory and uses them for prediction. An app reset or server restart starts a new history.

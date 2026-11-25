@@ -13,6 +13,7 @@ import sklearn
 from ai.predict import Predictor
 from simulation import Simulator
 from simulation.compare_patrol import (
+    AI_MOVE_THRESHOLD,
     DEPARTURE_INTERVAL_SECONDS,
     ai_tick,
     fixed_patrol_tick,
@@ -112,7 +113,7 @@ def evaluate_day(sim, tick, scenario_id, policy):
             "policy": policy,
             "room_id": room,
             "mean_pm25": sums[room] / 1440,
-            "minutes_above_35": exceed[room],
+            "minutes_above_threshold": exceed[room],
             "excess_pm25_minutes": excess[room],
         })
 
@@ -120,7 +121,7 @@ def evaluate_day(sim, tick, scenario_id, policy):
         "scenario": scenario_id,
         "policy": policy,
         "mean_pm25": sum(sums.values()) / (1440 * len(ROOMS)),
-        "room_minutes_above_35": sum(exceed.values()),
+        "room_minutes_above_threshold": sum(exceed.values()),
         "excess_pm25_room_minutes": sum(excess.values()),
         "distance_cells": distance,
         "completed_trips": sum(
@@ -188,7 +189,7 @@ def main():
         "base_revision": revision,
         "sklearn_version": sklearn.__version__,
         "model_sha256": sha256(
-            ROOT / "artifacts" / "pm25_model.joblib"
+            ROOT / "artifacts" / "uniform20_model.joblib"
         ),
         "source_sha256": {
             str(path.relative_to(project)): sha256(path)
@@ -210,8 +211,8 @@ def main():
             "living/kitchen/bedroom"
         ),
         "ai_policy": (
-            "Part B ai_tick, 10-minute forecasts, "
-            "threshold 35, travel weight 1"
+            "One-day AI baseline, 10-minute forecasts, "
+            f"movement threshold {AI_MOVE_THRESHOLD}, travel weight 1"
         ),
         "initialization": (
             "same initial state and living-room observation; "
@@ -276,7 +277,7 @@ def main():
                 "An evaluation event schedule repeats the existing dataset."
             )
 
-    manifest["event_schedules_disjoint_from_existing_60_days"] = True
+    manifest["event_schedules_disjoint_from_generated_data"] = True
 
     # Save the protocol before inspecting comparison results.
     (output / "manifest.json").write_text(
@@ -432,12 +433,12 @@ def main():
         )
 
     better = sum(
-        row["room_minutes_above_35_ai_minus_fixed"] < 0
+        row["room_minutes_above_threshold_ai_minus_fixed"] < 0
         for row in paired
     )
 
     worse = sum(
-        row["room_minutes_above_35_ai_minus_fixed"] > 0
+        row["room_minutes_above_threshold_ai_minus_fixed"] > 0
         for row in paired
     )
 
@@ -452,7 +453,7 @@ def main():
         "",
         "Room-minutes sum durations across rooms and may exceed 1440.",
         "They do not represent human exposure without an occupancy model.",
-        "Excess PM minutes sum max(PM - 35, 0) using 1-minute samples.",
+        f"Excess PM minutes sum max(PM - {PURIFY_ON}, 0) using 1-minute samples.",
         "Travel distance is measured in actual grid cells.",
         (
             "Initial observations are identical, but startup patrol "

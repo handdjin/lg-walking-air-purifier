@@ -8,7 +8,7 @@ from pydantic import BaseModel
 
 from ai.predict import Predictor, predict_from_simulator
 from simulation import Simulator
-from simulation.controller import decide_and_move
+from simulation.controller import choose_destination
 
 
 simulator = Simulator()
@@ -51,41 +51,49 @@ def auto_decision():
 
     seconds = state["simulation_time_seconds"]
 
-    if seconds % 600 != 0:
-        return
-
-    # Process each prediction time only once.
-    if last_prediction_seconds == seconds:
-        return
-
-    # Use actual measurement timestamps, including fractional minutes.
-    result = predict_from_simulator(predictor, simulator)
-
-    last_prediction_seconds = seconds
-    latest_prediction = result
-
-    # Keep an active route unchanged.
-    if active_mode == "auto" and result["status"] == "ok" and state["remaining_steps"] == 0:
-        response = decide_and_move(
-            simulator,
-            result["predictions"],
-        )
-
-        latest_decision = response["decision"]
-
-        print("AI decision:", latest_decision)
-
-    elif result["status"] != "ok":
+    if seconds % 600 == 0 and last_prediction_seconds != seconds:
+        latest_prediction = predict_from_simulator(predictor, simulator)
+        last_prediction_seconds = seconds
         latest_decision = None
+        if (active_mode == "auto" and latest_prediction["status"] == "ok"
+                and not state["remaining_steps"]):
+            latest_decision = choose_destination(
+                simulator, latest_prediction["predictions"], threshold=20)
+
+    if (active_mode != "auto" or not latest_decision or state["remaining_steps"]
+            or latest_decision["decided_at_seconds"] != seconds - seconds % 600):
+        return
+    arrival = simulator.last_arrival_seconds
+    if arrival is not None and seconds - arrival < 600:
+        return
+    if latest_decision["action"] == "move" and seconds % 600 == 0:
+        simulator.move_to(latest_decision["target_room"])
+        return
+
+    phase = ((simulator.simulation_day - 1) * 3 % 10) * 60
+    if (latest_decision["action"] == "wait" and seconds % 600 == phase
+            and not state["is_purifying"]):
+        ages = {room: reading["age_seconds"] for room, reading in state["observations"].items()
+                if room != state["current_room"] and reading["age_seconds"] is not None}
+        limit = (120 if simulator.simulation_day <= 7 else 180) * 60
+        if ages:
+            room = max(ages, key=ages.get)
+            if ages[room] >= limit:
+                simulator.move_to(room)
+                latest_decision = {**latest_decision, "action": "move",
+                                   "reason": "stale_measurement", "target_room": room}
 
 
 def advance_simulation():
-    global active_mode
+    global active_mode, latest_prediction, latest_decision, last_prediction_seconds
     if simulator.get_state()["is_running"]:
         if active_mode == "auto":
             initial_patrol()
         auto_decision()
         state = simulator.step()
+        if state["finished"]:
+            simulator.next_day()
+            latest_prediction = latest_decision = last_prediction_seconds = None
         if not state["remaining_steps"]:
             active_mode = selected_mode
     return status()

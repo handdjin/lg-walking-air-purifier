@@ -10,10 +10,11 @@ from simulation.simulator import PURIFY_ON
 
 PATROL_ROOMS = ("living_room", "kitchen", "bedroom")
 DEPARTURE_INTERVAL_SECONDS = 20 * 60
+AI_MOVE_THRESHOLD = 20
 
 
 def ai_tick(simulator, predictor):
-    """Follow the server's initial patrol and ten-minute decision schedule."""
+    """Run the one-day AI baseline with initial visits and ten-minute forecasts."""
     state = simulator.get_state()
     if not state["remaining_steps"]:
         for room in PATROL_ROOMS:
@@ -24,7 +25,7 @@ def ai_tick(simulator, predictor):
     if state["simulation_time_seconds"] % 600 == 0:
         forecast = predict_from_simulator(predictor, simulator)
         if forecast["status"] == "ok" and not state["remaining_steps"]:
-            decide_and_move(simulator, forecast["predictions"])
+            decide_and_move(simulator, forecast["predictions"], threshold=AI_MOVE_THRESHOLD)
     return simulator.step()
 
 

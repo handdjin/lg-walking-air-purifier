@@ -84,7 +84,7 @@ An arrival between minute boundaries samples the most recently calculated concen
 - The purifier measures in its starting room, on arrival at a destination, and after ten minutes since the last reading while stationary.
 - It does not measure in doorways or in rooms it passes through. It records at most one reading per room at a given time.
 - An unmeasured room has `null` observation fields. After departure, the last reading stays in place and its age increases.
-- A reading of 35 or higher starts purification. A reading of 15 or lower stops it. Between these values, the previous decision remains in effect.
+- A reading of 20 or higher starts purification. A reading of 15 or lower stops it. Between these values, the previous decision remains in effect.
 - If the underlying concentration drops during purification, the decision stays in effect until the next measurement.
 - Reserving a route that requires movement stops purification. A fresh reading on arrival determines what happens next.
 - Pausing preserves the purification decision and suspends both purification and the clock.
@@ -95,12 +95,13 @@ An arrival between minute boundaries samples the most recently calculated concen
 
 | Function | Return value or behavior |
 |---|---|
-| `Simulator(seed=0, day_index=0, late_dinner=False, events=None)` | Create a reproducible one-day simulation |
+| `Simulator(seed=0, day_index=0, late_dinner=False, events=None)` | Create a reproducible simulation starting on virtual day one |
 | `get_map()` | Return a copy of the map, room boundaries, targets, and start position |
 | `get_state()` | Return a snapshot for the app or control policy without advancing time |
 | `start()` | Enable simulation and return the state |
 | `pause()` | Pause simulation and return the state |
 | `reset()` | Reset the position, route, destination, clock, environment, observations, and history, then return the state |
+| `next_day()` | Start the next virtual day after the current day ends and keep up to 14 previous days of measurements |
 | `move_to(room)` | Reserve a route from the current position and return the state |
 | `step()` | Advance one tick if running and return the state |
 | `get_history()` | Return a copy of the command, arrival, measurement, and purification transition history |
@@ -108,7 +109,7 @@ An arrival between minute boundaries samples the most recently calculated concen
 | `get_scenario()` | Return a copy of the settings and activity schedule for reproducibility |
 | `render_map()` | Return a text map showing the purifier's position |
 
-`reset()` restores the initial position, destination, route, clock, and environment. Identical settings and commands reproduce the same results. Immediately after reset, the history contains only the reset and the initial room measurement.
+`reset()` restores the initial position, destination, route, clock, and environment. Identical settings and commands reproduce the same results. Reset also returns the simulation to day one and discards the previous days of measurements. Immediately after reset, the history contains only the reset and the initial room measurement.
 
 ### State fields
 
@@ -142,7 +143,8 @@ Keep a simulator instance alive to handle commands and state queries. The host a
 | Start or resume | `start()` |
 | Pause | `pause()` |
 | Reset | `reset()` |
-| Set destination | `move_to(room)` |
+| Set destination | `next_day()` | Start the next virtual day after the current day ends and keep up to 14 previous days of measurements |
+| `move_to(room)` |
 | Advance one step | `step()` |
 | Read state or map | `get_state()`, `get_map()` |
 
@@ -221,7 +223,7 @@ python3 -m simulation.controller_demo
 4. Score = predicted PM − travel time in minutes × `travel_weight`. The default weight of 1 subtracts one point per minute of travel.
 5. Choose the highest score. Break ties by shorter travel time, then by room ID in alphabetical order.
 
-The threshold of 35 and weight of 1 are initial settings pending validation. They do not establish optimality or AI performance. The threshold applies to **predicted PM**. An eligible room can win even with a negative score.
+The backend passes 20 for automatic movement. The standalone controller defaults to 35 when a caller omits the threshold. The default travel weight is 1. The threshold applies to **predicted PM**. An eligible room can win even with a negative score.
 
 ### Example call
 
