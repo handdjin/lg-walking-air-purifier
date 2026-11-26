@@ -1,7 +1,7 @@
 import type { PropsWithChildren, ReactNode } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TextInput, View, type TextInputProps } from 'react-native';
 
-import { Brand, Card, colors, Copy } from './ui';
+import { AiryScreen, Brand, Card, colors, Copy } from './ui';
 
 export function AuthForm({ title, children, introduction, footer }: PropsWithChildren<{
   title: string;
@@ -9,21 +9,23 @@ export function AuthForm({ title, children, introduction, footer }: PropsWithChi
   footer?: ReactNode;
 }>) {
   return (
-    <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        <View style={styles.identity}>
-          <Brand size={46}>LG Airy</Brand>
-          <Copy size={14} color={colors.muted}>AI Walking Air Purifier</Copy>
-          {introduction}
-        </View>
-        <Card style={styles.form}>
-          <Copy size={20} bold>{title}</Copy>
-          {children}
-        </Card>
-        {footer}
-        <Copy size={12} color={colors.muted} style={styles.tagline}>Your home. Your air. In harmony.</Copy>
-      </ScrollView>
-    </KeyboardAvoidingView>
+    <AiryScreen>
+      <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+          <View style={styles.identity}>
+            <Brand size={46}>LG Airy</Brand>
+            <Copy size={14} color={colors.muted}>AI Walking Air Purifier</Copy>
+            {introduction}
+          </View>
+          <Card style={styles.form}>
+            <Copy size={20} bold>{title}</Copy>
+            {children}
+          </Card>
+          {footer}
+          <Copy size={12} color={colors.muted} style={styles.tagline}>Your home. Your air. In harmony.</Copy>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </AiryScreen>
   );
 }
 

@@ -9,7 +9,7 @@ import 'expo-crypto';
 import 'react-native-get-random-values';
 import 'react-native-url-polyfill/auto';
 
-import { Backdrop, layout } from '@/components/airy/ui';
+import { layout } from '@/components/airy/ui';
 import { hasSavedSession, AuthStateContext } from '@/lib/auth-session';
 
 void SplashScreen.preventAutoHideAsync();
@@ -36,7 +36,6 @@ export default function RootLayout() {
   return (
     <View style={layout.screen}>
       <StatusBar style="dark" />
-      {signedIn !== true && <Backdrop />}
       {ready && (
         <SafeAreaView style={{ flex: 1 }}>
           <AuthStateContext.Provider value={setSignedIn}>
