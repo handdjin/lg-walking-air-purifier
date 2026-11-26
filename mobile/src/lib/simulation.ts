@@ -1,6 +1,5 @@
 import { getAccessToken } from './auth-session';
 const server = process.env.EXPO_PUBLIC_SERVER_URL ?? 'https://lg-air-purifier-demo.duckdns.org';
-const apiKey = process.env.EXPO_PUBLIC_API_KEY;
 
 export async function simulationRequest<T>(
   endpoint: string,
@@ -9,7 +8,6 @@ export async function simulationRequest<T>(
   const token = await getAccessToken();
 
   const headers = new Headers(options?.headers);
-  if (apiKey) headers.set('X-API-Key', apiKey);
   headers.set('Authorization', `Bearer ${token}`);
 
   const response = await fetch(`${server}/${endpoint}`, {
