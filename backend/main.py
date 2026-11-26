@@ -10,6 +10,9 @@ from ai.predict import Predictor, predict_from_simulator
 from simulation import Simulator
 from simulation.controller import choose_destination
 
+from fastapi import Depends
+from backend.auth import verify_token
+
 
 simulator = Simulator()
 predictor = Predictor()
@@ -128,7 +131,10 @@ async def lifespan(app: FastAPI):
             pass
 
 
-app = FastAPI(lifespan=lifespan)
+app = FastAPI(
+    lifespan=lifespan,
+    dependencies=[Depends(verify_token)],
+)
 
 # Allow requests from the Expo web client.
 app.add_middleware(

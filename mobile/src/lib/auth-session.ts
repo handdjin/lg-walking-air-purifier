@@ -24,3 +24,13 @@ export async function saveSession() {
   if (!token) throw new Error('Access token unavailable.');
   if (Platform.OS !== 'web') await SecureStore.setItemAsync('accessToken', token);
 }
+
+export async function getAccessToken() {
+  const { fetchAuthSession } = await getCognitoAuth();
+  const session = await fetchAuthSession();
+  const token = session.tokens?.accessToken?.toString();
+
+  if (!token) throw new Error('Authentication required.');
+
+  return token;
+}

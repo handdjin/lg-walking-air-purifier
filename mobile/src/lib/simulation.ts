@@ -1,16 +1,26 @@
+import { getAccessToken } from './auth-session';
 const server = process.env.EXPO_PUBLIC_SERVER_URL ?? 'https://lg-air-purifier-demo.duckdns.org';
 const apiKey = process.env.EXPO_PUBLIC_API_KEY;
 
-export async function simulationRequest<T>(endpoint: string, options?: RequestInit): Promise<T> {
+export async function simulationRequest<T>(
+  endpoint: string,
+  options?: RequestInit
+): Promise<T> {
+  const token = await getAccessToken();
+
+  const headers = new Headers(options?.headers);
+  if (apiKey) headers.set('X-API-Key', apiKey);
+  headers.set('Authorization', `Bearer ${token}`);
+
   const response = await fetch(`${server}/${endpoint}`, {
     ...options,
-    headers: {
-      ...(apiKey ? { 'X-API-Key': apiKey } : {}),
-      ...options?.headers,
-    },
+    headers,
     signal: options?.signal ?? AbortSignal.timeout(10000),
   });
-  if (!response.ok) throw new Error(`Server request failed (${response.status}).`);
+
+  if (!response.ok)
+    throw new Error(`Server request failed (${response.status}).`);
+
   return response.json();
 }
 
