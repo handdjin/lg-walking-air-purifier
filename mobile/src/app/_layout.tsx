@@ -10,7 +10,7 @@ import 'react-native-get-random-values';
 import 'react-native-url-polyfill/auto';
 
 import { Backdrop, layout } from '@/components/airy/ui';
-import { hasSavedSession, SignInContext } from '@/lib/auth-session';
+import { hasSavedSession, AuthStateContext } from '@/lib/auth-session';
 
 void SplashScreen.preventAutoHideAsync();
 
@@ -39,7 +39,7 @@ export default function RootLayout() {
       {signedIn !== true && <Backdrop />}
       {ready && (
         <SafeAreaView style={{ flex: 1 }}>
-          <SignInContext.Provider value={() => setSignedIn(true)}>
+          <AuthStateContext.Provider value={setSignedIn}>
             <Stack screenOptions={{ headerShown: false, animation: 'none', contentStyle: { backgroundColor: 'transparent' } }}>
               <Stack.Protected guard={signedIn === true}>
                 <Stack.Screen name="(main)" />
@@ -49,7 +49,7 @@ export default function RootLayout() {
                 <Stack.Screen name="signup" />
               </Stack.Protected>
             </Stack>
-          </SignInContext.Provider>
+          </AuthStateContext.Provider>
         </SafeAreaView>
       )}
     </View>

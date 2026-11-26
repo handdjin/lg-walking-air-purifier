@@ -2,7 +2,7 @@ import * as SecureStore from 'expo-secure-store';
 import { createContext } from 'react';
 import { Platform } from 'react-native';
 
-export const SignInContext = createContext<() => void>(() => {});
+export const AuthStateContext = createContext<(signedIn: boolean) => void>(() => {});
 
 export async function getCognitoAuth() {
   await import('../amplify-config');
@@ -23,6 +23,12 @@ export async function saveSession() {
   const token = session.tokens?.accessToken?.toString();
   if (!token) throw new Error('Access token unavailable.');
   if (Platform.OS !== 'web') await SecureStore.setItemAsync('accessToken', token);
+}
+
+export async function clearSession() {
+  const { signOut } = await getCognitoAuth();
+  if (Platform.OS !== 'web') await SecureStore.deleteItemAsync('accessToken');
+  await signOut();
 }
 
 export async function getAccessToken() {

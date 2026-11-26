@@ -1,10 +1,11 @@
 import { Image } from 'expo-image';
 import { useFocusEffect } from 'expo-router';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useContext, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { FloorPlan } from '@/components/airy/floor-plan';
 import { AiryScreen, Button, Card, colors, Copy, Header, layout } from '@/components/airy/ui';
+import { AuthStateContext, clearSession } from '@/lib/auth-session';
 import { formatTime, roomName, simulationRequest, type HouseMap, type Room, type SimulatorState } from '@/lib/simulation';
 
 const reasons: Record<string, string> = {
@@ -135,6 +136,10 @@ function Operations({ map, state, busy, command }: { map: HouseMap; state: Simul
 }
 
 export default function HomeScreen() {
+  const setSignedIn = useContext(AuthStateContext);
+  const signOutInProgress = useRef(false);
+  const [signingOut, setSigningOut] = useState(false);
+  const [signOutError, setSignOutError] = useState(false);
   const [map, setMap] = useState<HouseMap>();
   const [state, setState] = useState<SimulatorState>();
   const [connection, setConnection] = useState<Connection>('loading');
@@ -201,12 +206,31 @@ export default function HomeScreen() {
     await refresh(true);
   };
 
+  const handleSignOut = async () => {
+    if (signOutInProgress.current) return;
+    signOutInProgress.current = true;
+    setSigningOut(true);
+    setSignOutError(false);
+    try {
+      await clearSession();
+      setSignedIn(false);
+    } catch {
+      setSignOutError(true);
+    } finally {
+      signOutInProgress.current = false;
+      setSigningOut(false);
+    }
+  };
+
   const manual = state?.mode === 'manual';
   const decision = state?.ai_decision;
   return (
     <AiryScreen>
-      <Header title="MY Home" subtitle="AI Walking Air Purifier" />
+      <Header title="MY Home" subtitle="AI Walking Air Purifier"
+        action={<Button label={signingOut ? 'Signing Out...' : 'Sign Out'} variant="secondary"
+          disabled={signingOut} onPress={handleSignOut} />} />
       <ScrollView contentContainerStyle={layout.list}>
+        {signOutError && <Copy color={colors.red}>Unable to sign out. Try again.</Copy>}
         {connection !== 'online' || !map || !state ? (
           <ConnectionCard loading={connection === 'loading'} reconnect={reconnect} />
         ) : <>

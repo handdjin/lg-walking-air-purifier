@@ -1,5 +1,5 @@
 import { Image } from 'expo-image';
-import type { PropsWithChildren } from 'react';
+import type { PropsWithChildren, ReactNode } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Pressable, StyleSheet, Text, View, type StyleProp, type TextStyle, type ViewStyle } from 'react-native';
 
@@ -33,11 +33,14 @@ export function AiryScreen({ children }: PropsWithChildren) {
   );
 }
 
-export function Header({ title, subtitle }: { title: string; subtitle: string }) {
+export function Header({ title, subtitle, action }: { title: string; subtitle: string; action?: ReactNode }) {
   return (
     <View style={styles.header}>
       <Copy size={10} color={colors.red} bold>LG Airy / ThinQ</Copy>
-      <Brand>{title}</Brand>
+      <View style={layout.row}>
+        <Brand>{title}</Brand>
+        {action}
+      </View>
       <Copy color={colors.muted}>{subtitle}</Copy>
     </View>
   );

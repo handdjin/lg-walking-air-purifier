@@ -3,11 +3,11 @@ import { useContext, useState } from 'react';
 
 import { AuthField, AuthForm } from '@/components/airy/auth-form';
 import { Button, colors, Copy } from '@/components/airy/ui';
-import { getCognitoAuth, saveSession, SignInContext } from '@/lib/auth-session';
+import { getCognitoAuth, saveSession, AuthStateContext } from '@/lib/auth-session';
 
 export default function LoginScreen() {
   const router = useRouter();
-  const onSignedIn = useContext(SignInContext);
+  const setSignedIn = useContext(AuthStateContext);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -32,7 +32,7 @@ export default function LoginScreen() {
         : await signIn({ username: email.trim(), password, options: { authFlowType: 'USER_PASSWORD_AUTH' } });
       if (result.isSignedIn) {
         await saveSession();
-        onSignedIn();
+        setSignedIn(true);
       } else if (result.nextStep.signInStep === 'CONFIRM_SIGN_IN_WITH_NEW_PASSWORD_REQUIRED') {
         setNeedsNewPassword(true);
       } else if (result.nextStep.signInStep === 'CONFIRM_SIGN_UP') {
