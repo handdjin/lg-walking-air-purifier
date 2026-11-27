@@ -77,7 +77,10 @@ class Simulator:
         self._seconds = 0
         self._running = False
         self._purifying = False
-        
+        self._operating = True    # Device power: False after stop_operation()
+        self._docking = False     # The active route leads to the dock
+        self._docked = False      # Waiting at the dock after return_to_dock()
+
         self._last_measurement_seconds = None
         self._exposure = {}  # 이번 1분 중 방별로 실제 정화한 가상 초
         self._observations = {room: None for room in self._map.rooms}
@@ -103,6 +106,73 @@ class Simulator:
             self._record("pause")
         return self.get_state()
 
+    @property
+    def dock(self):
+        """Charging dock cell from the map's "dock" entry."""
+        return self._map.dock
+
+    def _active(self):
+        """Whether the device may move, measure, and purify."""
+        return self._operating and not self._docked
+
+    def device_state(self):
+        """Return running, stopped, returning, or docked."""
+        if not self._operating:
+            return "stopped"
+        if self._docked:
+            return "docked"
+        return "returning" if self._docking else "running"
+
+    def stop_operation(self):
+        """Stop moving, measuring, and purifying. Time and pollution keep changing.
+
+        The remaining route is kept and continues after start_operation().
+        """
+        if self._operating:
+            self._set_purifying(False, "operation_stopped")
+            self._operating = False
+            self._record("operation_stopped", position=list(self._position))
+        return self.get_state()
+
+    def start_operation(self):
+        """Resume after stop_operation() or leave the dock, then measure in place if stationary."""
+        if self._seconds >= MINUTES_PER_DAY * 60:
+            raise ValueError("The day has ended. Call reset() before starting operation.")
+        if not self._active():
+            self._operating = True
+            self._docked = False
+            self._record("operation_started", position=list(self._position))
+            self._measure_current_room("operation_started")
+        return self.get_state()
+
+    def return_to_dock(self):
+        """Plan a route to the dock and wait there until start_operation().
+
+        Purification stops while returning and at the dock. Works while stopped too.
+        """
+        if self._seconds >= MINUTES_PER_DAY * 60:
+            raise ValueError("The day has ended. Call reset() before returning to the dock.")
+        if self._docked:
+            return self.get_state()
+        planner = self._plan(self.dock)
+        path = planner.path()
+        # Preserve the current route and purification until planning succeeds.
+        self._set_purifying(False, "return_requested")
+        self._operating = True
+        self._destination = None
+        self._path = deque(path[1:])
+        self._planner = planner if self._path else None
+        self._docking = bool(self._path)
+        self._record("return_requested", position=list(self._position))
+        if not self._path:
+            self._arrive_at_dock()
+        return self.get_state()
+
+    def _arrive_at_dock(self):
+        self._docking = False
+        self._docked = True
+        self._record("docked", position=list(self._position))
+
     def _record(self, event_type, **details):
         self._history.append({"time_seconds": self._seconds, "type": event_type, **details})
 
@@ -115,7 +185,7 @@ class Simulator:
     def _measure_current_room(self, reason):
         """Measure only on arrival or while stationary, using the room at the actual coordinates."""
         room = self._map.room_at(self._position)
-        if room is None or self._path:
+        if room is None or self._path or not self._active():
             return
         previous = self._observations[room]
         if previous and previous["measured_at_seconds"] == self._seconds:
@@ -154,7 +224,10 @@ class Simulator:
             "room_name": self._map.rooms[room].name if room else None,
             "position": list(self._position),
             "destination": self._destination,
-            "status": "moving" if self._path else ("purifying" if self._purifying else "idle"),
+            "status": ("moving" if self._path and self._active() else
+                       "purifying" if self._purifying else "idle"),
+            "device_state": self.device_state(),
+            "dock": list(self.dock),
             "remaining_path": [list(point) for point in self._path],
             "blocked_cells": [list(cell) for cell in sorted(self._blocked)],
             "remaining_steps": len(self._path),
@@ -169,7 +242,8 @@ class Simulator:
             self._last_measurement_seconds is not None
             and self._seconds - self._last_measurement_seconds < 20
             and not self._path
-),
+            and self._active()
+        ),
         }
     
     def estimate_travel_seconds(self, room):
@@ -199,12 +273,12 @@ class Simulator:
         if not isinstance(blocked, bool):
             raise ValueError("blocked must be True or False.")
         cells = [coordinate(cell) for cell in cells]
-        targets = {room.target for room in self._map.rooms.values()}
+        targets = {room.target for room in self._map.rooms.values()} | {self.dock}
         for cell in cells:
             if not self._map.is_walkable(cell):
                 raise ValueError(f"{list(cell)} is not a walkable map cell.")
             if blocked and (cell in targets or cell == self._position):
-                raise ValueError(f"{list(cell)} is a room target or the purifier's position.")
+                raise ValueError(f"{list(cell)} is a room target, the dock, or the purifier's position.")
         changed = sorted(set(cells) - self._blocked if blocked else set(cells) & self._blocked)
         if not changed:
             return self.get_state()
@@ -229,6 +303,7 @@ class Simulator:
         except NoPathError:
             self._path = deque()
             self._planner = None
+            self._docking = False
             self._record("route_blocked", destination=self._destination,
                          position=list(self._position))
             self._measure_current_room("route_blocked")
@@ -244,6 +319,8 @@ class Simulator:
             raise ValueError(f"Invalid room ID: {room!r}")
         if self._seconds >= MINUTES_PER_DAY * 60:
             raise ValueError("The day has ended. Call reset() before moving.")
+        if not self._active():
+            raise ValueError(f"The purifier is {self.device_state()}. Call start_operation() first.")
         planner = self._plan(self._map.rooms[room].target)
         path = planner.path()
         # Preserve movement and purification state until route planning succeeds.
@@ -252,6 +329,7 @@ class Simulator:
         self._destination = room
         self._path = deque(path[1:])
         self._planner = planner if self._path else None
+        self._docking = False
         self._record("move_requested", destination=room)
         if not self._path:
             self._measure_current_room("arrival")
@@ -267,10 +345,11 @@ class Simulator:
         if not self._running:
             return self.get_state()
         next_seconds = self._seconds + self._tick_seconds
-        moving = bool(self._path)
+        active = self._active()
+        moving = bool(self._path) and active
         exposure = dict(self._exposure)
         room = self._map.room_at(self._position)
-        if not moving and self._purifying and room is not None:
+        if active and not moving and self._purifying and room is not None:
             exposure[room] = exposure.get(room, 0) + self._tick_seconds
         if next_seconds % 60 == 0:
             self._environment.advance(purification_seconds=exposure)
@@ -283,11 +362,13 @@ class Simulator:
             else:
                 self._planner = None
         self._seconds = next_seconds
-        if moving and not self._path:
+        if moving and not self._path and self._docking:
+            self._arrive_at_dock()
+        elif moving and not self._path:
             self.last_arrival_seconds = self._seconds
             self._record("arrival", room=self._map.room_at(self._position))
             self._measure_current_room("arrival")
-        elif not self._path and room is not None:
+        elif active and not self._path and room is not None:
             observation = self._observations[room]
             if observation is None or self._seconds - observation["measured_at_seconds"] >= MEASUREMENT_INTERVAL_SECONDS:
                 self._measure_current_room("periodic")

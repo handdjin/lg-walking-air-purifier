@@ -17,5 +17,6 @@
     {"id": "kitchen", "name": "Kitchen", "bounds": [8, 1, 13, 4], "target": [11, 3]},
     {"id": "bedroom", "name": "Bedroom", "bounds": [8, 6, 13, 9], "target": [11, 8]}
   ],
-  "start": [2, 4]
+  "start": [2, 4],
+  "dock": [1, 9]
 }

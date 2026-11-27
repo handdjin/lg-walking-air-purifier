@@ -40,8 +40,10 @@ class AutoModePolicy:
             self._day = simulator.simulation_day
             self.latest_decision = None
             self.last_prediction_seconds = None
-        self._initial_patrol(simulator)
-        self._decide(simulator)
+        # Stopped, returning, or docked devices make no automatic moves.
+        if simulator.get_state()["device_state"] == "running":
+            self._initial_patrol(simulator)
+            self._decide(simulator)
         return simulator.step()
 
     def _predict(self, simulator):

@@ -24,7 +24,7 @@ python3 -m unittest discover -s simulation/tests -v
 
 | File | Purpose |
 |---|---|
-| `house_map.json` | Defines rooms, walls, doors, obstacles, start position, and target cells |
+| `house_map.json` | Defines rooms, walls, doors, obstacles, start position, charging dock, and target cells |
 | `house_map.py` | Validates the map and identifies the room at a coordinate |
 | `pathfinding.py` | D* Lite shortest-path search with incremental replanning |
 | `simulator.py` | Coordinates movement, time, measurements, purification, start, pause, and reset |
@@ -40,6 +40,7 @@ python3 -m unittest discover -s simulation/tests -v
 | `tests/test_environment.py` | Tests air quality calculations, activities, and reproducibility |
 | `tests/test_integration.py` | Tests interactions between time, control, measurements, and purification |
 | `tests/test_controller.py` | Tests destination selection, error handling, and movement |
+| `tests/test_device_controls.py` | Tests stop/start operation, return to the dock, and Auto Mode while docked |
 | `tests/test_compare_patrol.py` | Tests the Auto Mode mirror (initial patrol, stay after arrival, stale-reading revisit) and `next_day(late_dinner=...)` |
 
 ## Basic usage
@@ -98,7 +99,7 @@ An arrival between minute boundaries samples the most recently calculated concen
 | Function | Return value or behavior |
 |---|---|
 | `Simulator(seed=0, day_index=0, late_dinner=False, events=None)` | Create a reproducible simulation starting on virtual day one |
-| `get_map()` | Return a copy of the map, room boundaries, targets, and start position |
+| `get_map()` | Return a copy of the map, room boundaries, targets, start position, and dock |
 | `get_state()` | Return a snapshot for the app or control policy without advancing time |
 | `start()` | Enable simulation and return the state |
 | `pause()` | Pause simulation and return the state |
@@ -106,6 +107,9 @@ An arrival between minute boundaries samples the most recently calculated concen
 | `next_day(late_dinner=None)` | Start the next virtual day after the current day ends and keep up to 14 previous days of measurements. `late_dinner` optionally switches the generated schedule from that day on; `reset()` restores the original setting |
 | `move_to(room)` | Reserve a route from the current position and return the state |
 | `set_blocked(cells, blocked=True)` | Close or reopen walkable cells at run time and replan an active route |
+| `stop_operation()` | Stop moving, measuring, and purifying while time and pollution continue |
+| `start_operation()` | Resume after a stop or leave the dock, then measure in place |
+| `return_to_dock()` | Move to the charging dock and wait there until `start_operation()` |
 | `step()` | Advance one tick if running and return the state |
 | `get_history()` | Return a copy of the command, arrival, measurement, and purification transition history |
 | `get_ground_truth()` | Return a copy of the internal concentrations for evaluation |
@@ -122,7 +126,9 @@ An arrival between minute boundaries samples the most recently calculated concen
 | `current_room`, `room_name` | Current room ID and display name. In a doorway both are `null` |
 | `position` | `[x, y]` coordinates |
 | `destination` | Requested destination. Retained after arrival and reset to `null` |
-| `status` | `moving`, `idle`, `purifying` indicate the current activity |
+| `status` | `moving`, `idle`, `purifying` indicate the current activity. A stopped or docked purifier is `idle` |
+| `device_state` | `running`, `stopped`, `returning`, or `docked`. See Device controls |
+| `dock` | Charging dock `[x, y]`. Default map: `[1, 9]` |
 | `remaining_path`, `remaining_steps` | Remaining route and cell count, excluding the current cell |
 | `blocked_cells` | Cells closed with `set_blocked()`. Empty by default |
 | `simulation_time_seconds` | Elapsed simulated seconds |
@@ -152,6 +158,8 @@ Keep a simulator instance alive to handle commands and state queries. The host a
 | Set destination | `move_to(room)` |
 | Start the next day | `next_day()` |
 | Close or reopen cells | `set_blocked(cells, blocked=True)` |
+| Stop or resume the purifier | `stop_operation()`, `start_operation()` |
+| Return to the dock | `return_to_dock()` |
 | Advance one step | `step()` |
 | Read state or map | `get_state()`, `get_map()` |
 
@@ -160,6 +168,41 @@ Use a single update loop and call `step()` while running, even without a route. 
 Use `is_running` for the running indicator and `is_purifying` for active purification. Display the readings and timestamps from `observations`. A `null` value means the room has not been measured. Refresh the screen with the state returned after reset.
 
 State is stored in memory. Process commands and steps sequentially or protect concurrent updates with a lock. State is neither restored after a server restart nor shared between processes.
+
+## Device controls
+
+`start()`, `pause()`, and `reset()` control the simulation itself: the clock, the environment, and the run. The device controls below act only on the purifier, so time and pollution keep changing. Apps should show the device controls and keep the simulation controls for demo setup and testing.
+
+| `device_state` | Meaning | Moves | Measures | Purifies |
+|---|---|---|---|---|
+| `running` | Normal operation | Yes | Yes | By measurement |
+| `stopped` | After `stop_operation()` | No | No | No |
+| `returning` | Travelling to the dock after `return_to_dock()` | Yes | No | No |
+| `docked` | Waiting at the dock | No | No | No |
+
+```python
+sim = Simulator()
+sim.start()                 # The simulation clock runs
+sim.move_to("kitchen")
+sim.step()
+sim.stop_operation()        # Stays in place; the remaining route is kept
+sim.start_operation()       # Continues the route
+sim.return_to_dock()        # Travels to the dock, then waits as "docked"
+sim.start_operation()       # Leaves the dock and measures the living room
+```
+
+- The dock is the map's `dock` cell, `[1, 9]` in the bottom-left corner of the living room. A map without `dock` uses its start position. The dock cannot be blocked with `set_blocked()`.
+- `stop_operation()` turns purification off. `start_operation()` takes a reading at once if the purifier is stationary in a room.
+- `move_to()` raises `ValueError` while the device is `stopped` or `docked`. Call `start_operation()` first. A `move_to()` during `returning` cancels the return.
+- `return_to_dock()` also works while stopped and turns the device back on to travel. If a run-time obstacle cuts off the route, the return ends with `route_blocked` and the device stays `running`.
+- History records `operation_stopped`, `operation_started`, `return_requested`, and `docked`.
+- `reset()` and `next_day()` start the day `running` at the start position `[2, 4]`, not at the dock, to match the AI training conditions.
+
+### Backend integration
+
+- Make automatic decisions (`initial_patrol()` and `auto_decision()` in `backend/main.py`) only when `device_state == "running"`. `AutoModePolicy` in `compare_patrol.py` already follows this rule.
+- Expose `stop_operation()`, `start_operation()`, and `return_to_dock()` as device endpoints. Keep `/start`, `/pause`, and `/reset` for the simulation clock and run.
+- Without an app start button, start the simulation clock when the server starts.
 
 ## Shared air quality calculations
 
@@ -212,7 +255,7 @@ observation = env.sample_current_room("kitchen")
 | `kitchen` | Kitchen | `[11, 3]` |
 | `bedroom` | Bedroom | `[11, 8]` |
 
-Doorways at `[7, 3]` and `[7, 8]` belong to no room. Map edits take effect when a new simulator is created. Clients can display the same map using `get_map()`.
+The charging dock is at `[1, 9]`, the bottom-left corner of the living room. Doorways at `[7, 3]` and `[7, 8]` belong to no room. Map edits take effect when a new simulator is created. Clients can display the same map using `get_map()`.
 
 ## Pathfinding (D* Lite)
 

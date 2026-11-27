@@ -68,6 +68,10 @@ class HouseMap:
         self.start = coordinate(data["start"])
         if not self.is_walkable(self.start) or self.room_at(self.start) is None:
             raise ValueError("The start position must be a walkable cell inside a room.")
+        # The charging dock defaults to the start position when the map omits it.
+        self.dock = coordinate(data.get("dock", data["start"]))
+        if not self.is_walkable(self.dock) or self.room_at(self.dock) is None:
+            raise ValueError("The dock must be a walkable cell inside a room.")
 
     def is_walkable(self, position):
         x, y = coordinate(position)
@@ -101,6 +105,7 @@ class HouseMap:
                  "target": list(room.target)} for room in self.rooms.values()
             ],
             "start": list(self.start),
+            "dock": list(self.dock),
         }
 
 
