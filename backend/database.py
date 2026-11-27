@@ -1,28 +1,23 @@
-"""SQLite schema setup. Run: python -m backend.database [--verify]."""
+"""SQLite schema version 2, with lossless migration from version 1."""
 
 import argparse
-import json
+import os
 import sqlite3
-import tempfile
-import uuid
 from contextlib import contextmanager
+from datetime import datetime, timezone
 from pathlib import Path
 
-
 DB_PATH = Path(__file__).resolve().parent / "data" / "app.db"
+TABLES = ("simulation_runs", "measurements", "predictions", "decisions", "activity_events")
+SCHEMA_VERSION = 2
 
-TABLES = (
-    "simulation_runs",
-    "measurements",
-    "predictions",
-    "decisions",
-    "activity_events",
-)
 
-SCHEMA_VERSION = 1
+def database_path(path=None):
+    return Path(path or os.environ.get("AIR_PURIFIER_DB_PATH", DB_PATH))
 
 
 SCHEMA = """
+
 CREATE TABLE IF NOT EXISTS simulation_runs (
     run_id TEXT PRIMARY KEY NOT NULL,
     status TEXT NOT NULL DEFAULT 'created'
@@ -45,6 +40,8 @@ CREATE TABLE IF NOT EXISTS measurements (
     measurement_id INTEGER PRIMARY KEY AUTOINCREMENT,
     run_id TEXT NOT NULL
         REFERENCES simulation_runs(run_id) ON DELETE RESTRICT,
+    simulation_day INTEGER NOT NULL DEFAULT 1
+        CHECK (typeof(simulation_day)='integer' AND simulation_day >= 1),
     room_id TEXT NOT NULL
         CHECK (room_id IN ('living_room','kitchen','bedroom')),
     measured_at_seconds INTEGER NOT NULL
@@ -62,13 +59,15 @@ CREATE TABLE IF NOT EXISTS measurements (
     created_at TEXT NOT NULL DEFAULT (
         strftime('%Y-%m-%dT%H:%M:%fZ','now')
     ),
-    UNIQUE (run_id, room_id, measured_at_seconds)
+    UNIQUE (run_id, simulation_day, room_id, measured_at_seconds)
 );
 
 CREATE TABLE IF NOT EXISTS predictions (
     prediction_id INTEGER PRIMARY KEY AUTOINCREMENT,
     run_id TEXT NOT NULL
         REFERENCES simulation_runs(run_id) ON DELETE RESTRICT,
+    simulation_day INTEGER NOT NULL DEFAULT 1
+        CHECK (typeof(simulation_day)='integer' AND simulation_day >= 1),
     room_id TEXT NOT NULL
         CHECK (room_id IN ('living_room','kitchen','bedroom')),
     reference_seconds INTEGER NOT NULL
@@ -102,6 +101,7 @@ CREATE TABLE IF NOT EXISTS predictions (
     observation_age_seconds INTEGER
         CHECK (observation_age_seconds >= 0),
     model_version TEXT,
+    input_features_json TEXT NOT NULL DEFAULT '{}',
     created_at TEXT NOT NULL DEFAULT (
         strftime('%Y-%m-%dT%H:%M:%fZ','now')
     ),
@@ -121,13 +121,15 @@ CREATE TABLE IF NOT EXISTS predictions (
                 = reference_seconds-last_measured_at_seconds
         )
     ),
-    UNIQUE (run_id, room_id, reference_seconds)
+    UNIQUE (run_id, simulation_day, room_id, reference_seconds)
 );
 
 CREATE TABLE IF NOT EXISTS decisions (
     decision_id INTEGER PRIMARY KEY AUTOINCREMENT,
     run_id TEXT NOT NULL
         REFERENCES simulation_runs(run_id) ON DELETE RESTRICT,
+    simulation_day INTEGER NOT NULL DEFAULT 1
+        CHECK (typeof(simulation_day)='integer' AND simulation_day >= 1),
     decision_sequence INTEGER NOT NULL
         CHECK (decision_sequence >= 0),
     decided_at_seconds INTEGER NOT NULL
@@ -150,13 +152,15 @@ CREATE TABLE IF NOT EXISTS decisions (
             AND target_room IS NOT NULL
         )
     ),
-    UNIQUE (run_id, decision_sequence)
+    UNIQUE (run_id, simulation_day, decision_sequence)
 );
 
 CREATE TABLE IF NOT EXISTS activity_events (
     event_id INTEGER PRIMARY KEY AUTOINCREMENT,
     run_id TEXT NOT NULL
         REFERENCES simulation_runs(run_id) ON DELETE RESTRICT,
+    simulation_day INTEGER NOT NULL DEFAULT 1
+        CHECK (typeof(simulation_day)='integer' AND simulation_day >= 1),
     event_sequence INTEGER NOT NULL
         CHECK (event_sequence >= 0),
     time_seconds INTEGER NOT NULL
@@ -170,210 +174,105 @@ CREATE TABLE IF NOT EXISTS activity_events (
     created_at TEXT NOT NULL DEFAULT (
         strftime('%Y-%m-%dT%H:%M:%fZ','now')
     ),
-    UNIQUE (run_id, event_sequence)
+    UNIQUE (run_id, simulation_day, event_sequence)
 );
 
 CREATE INDEX IF NOT EXISTS idx_measurements_run_time
-    ON measurements(run_id, measured_at_seconds);
+    ON measurements(run_id, simulation_day, measured_at_seconds);
 
 CREATE INDEX IF NOT EXISTS idx_predictions_run_time
-    ON predictions(run_id, reference_seconds);
+    ON predictions(run_id, simulation_day, reference_seconds);
 
 CREATE INDEX IF NOT EXISTS idx_decisions_run_time
-    ON decisions(run_id, decided_at_seconds);
+    ON decisions(run_id, simulation_day, decided_at_seconds);
 
 CREATE INDEX IF NOT EXISTS idx_events_run_time
-    ON activity_events(run_id, time_seconds);
+    ON activity_events(run_id, simulation_day, time_seconds);
 """
 
 
 @contextmanager
-def connect_db(path=DB_PATH):
-    """Commit on success, roll back on error, and always close."""
-    path = Path(path)
+def connect_db(path=None):
+    path = database_path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
-
     connection = sqlite3.connect(path, timeout=5)
-
     try:
         connection.row_factory = sqlite3.Row
-        connection.execute("PRAGMA foreign_keys = ON")
-
+        connection.execute("PRAGMA foreign_keys=ON")
         with connection:
             yield connection
-
     finally:
         connection.close()
 
 
-def init_db(path=DB_PATH):
-    """Create missing tables without clearing existing records."""
+def statements():
+    return [part.strip() for part in SCHEMA.split(";") if part.strip()]
+
+
+def init_db(path=None):
+    """Create v2 or back up and atomically migrate v1; never erase history."""
+    path = database_path(path)
     with connect_db(path) as connection:
-        version = connection.execute(
-            "PRAGMA user_version"
-        ).fetchone()[0]
+        version = connection.execute("PRAGMA user_version").fetchone()[0]
+        tables = {row[0] for row in connection.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"
+        )}
+        if version not in (0, 1, 2) or (version == 0 and tables):
+            raise RuntimeError("Unknown database schema; no tables were replaced.")
+        if version in (1, 2) and tables != set(TABLES):
+            raise RuntimeError("Unexpected tables; inspect the DB before migration.")
+        if version == 2:
+            for table in TABLES[1:]:
+                columns = {row[1] for row in connection.execute(f"PRAGMA table_info({table})")}
+                if "simulation_day" not in columns:
+                    raise RuntimeError("Version 2 is missing simulation_day.")
+            return
+        connection.execute("PRAGMA journal_mode=WAL")
+        if version == 1:
+            stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S_%fZ")
+            backup = path.with_name(f"{path.stem}.before_v2_{stamp}.db")
+            with sqlite3.connect(backup) as target:
+                connection.backup(target)
+            print("Schema v1 backup:", backup)
 
-        existing = connection.execute(
-            "SELECT name FROM sqlite_master "
-            "WHERE type='table' AND name NOT LIKE 'sqlite_%'"
-        ).fetchall()
-
-        if (
-            version not in (0, SCHEMA_VERSION)
-            or (version == 0 and existing)
-        ):
-            raise RuntimeError(
-                "Existing schema needs inspection or a migration; "
-                "nothing was replaced."
-            )
-
-        connection.execute("PRAGMA journal_mode = WAL")
-
-        connection.executescript(
-            "BEGIN IMMEDIATE;\n"
-            + SCHEMA
-            + f"\nPRAGMA user_version = {SCHEMA_VERSION};\nCOMMIT;"
-        )
+        connection.execute("BEGIN IMMEDIATE")
+        if version == 1:
+            for table in TABLES[1:]:
+                statement = next(s for s in statements()
+                                 if s.startswith(f"CREATE TABLE IF NOT EXISTS {table} ("))
+                temporary = table + "_v2"
+                connection.execute(statement.replace(
+                    f"CREATE TABLE IF NOT EXISTS {table} (", f"CREATE TABLE {temporary} (", 1))
+                columns = [row[1] for row in connection.execute(f"PRAGMA table_info({table})")]
+                names = ",".join(columns)
+                connection.execute(f"INSERT INTO {temporary} ({names}) SELECT {names} FROM {table}")
+                connection.execute(f"DROP TABLE {table}")
+                connection.execute(f"ALTER TABLE {temporary} RENAME TO {table}")
+            # Old records were single-day; default simulation_day is 1.
+        for statement in statements():
+            connection.execute(statement)
+        connection.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
+        if connection.execute("PRAGMA foreign_key_check").fetchall():
+            raise RuntimeError("Foreign-key check failed; migration was rolled back.")
 
 
-def table_counts(path=DB_PATH):
+def table_counts(path=None):
     with connect_db(path) as connection:
-        return {
-            name: connection.execute(
-                f"SELECT COUNT(*) FROM {name}"
-            ).fetchone()[0]
-            for name in TABLES
-        }
-
-
-def verify_setup():
-    """Use a temporary DB; do not insert sample data into app.db."""
-    with tempfile.TemporaryDirectory() as directory:
-        path = Path(directory) / "check.db"
-
-        init_db(path)
-        run_id = str(uuid.uuid4())
-
-        with connect_db(path) as connection:
-            connection.execute(
-                "INSERT INTO simulation_runs(run_id, config_json) "
-                "VALUES (?, ?)",
-                (
-                    run_id,
-                    json.dumps({"purpose": "schema_verification"}),
-                ),
-            )
-
-            connection.execute(
-                "INSERT INTO measurements("
-                "run_id,room_id,measured_at_seconds,source_minute,pm25"
-                ") VALUES (?, 'kitchen', 100, 1, 12.97)",
-                (run_id,),
-            )
-
-            connection.execute(
-                "INSERT INTO predictions("
-                "run_id,room_id,reference_seconds,target_seconds,status,"
-                "predicted_pm25,last_measured_pm25,"
-                "last_measured_at_seconds,observation_age_seconds"
-                ") VALUES (?, 'kitchen', 600, 2400, 'ok', "
-                "40, 12.97, 100, 500)",
-                (run_id,),
-            )
-
-            connection.execute(
-                "INSERT INTO decisions("
-                "run_id,decision_sequence,decided_at_seconds,"
-                "action,target_room,reason"
-                ") VALUES (?, 0, 600, 'move', 'kitchen', 'highest_score')",
-                (run_id,),
-            )
-
-            connection.execute(
-                "INSERT INTO activity_events("
-                "run_id,event_sequence,time_seconds,event_type,room_id"
-                ") VALUES (?, 0, 600, 'move_requested', 'kitchen')",
-                (run_id,),
-            )
-
-        expected = dict.fromkeys(TABLES, 1)
-
-        if table_counts(path) != expected:
-            raise AssertionError("Save/read verification failed.")
-
-        init_db(path)
-
-        if table_counts(path) != expected:
-            raise AssertionError(
-                "Repeated initialization changed existing records."
-            )
-
-        invalid_statements = [
-            (
-                "INSERT INTO measurements("
-                "run_id,room_id,measured_at_seconds,pm25"
-                ") VALUES ('missing-run','kitchen',200,10)",
-                (),
-            ),
-            (
-                "INSERT INTO measurements("
-                "run_id,room_id,measured_at_seconds,pm25"
-                ") VALUES (?, 'kitchen',100,10)",
-                (run_id,),
-            ),
-            (
-                "INSERT INTO predictions("
-                "run_id,room_id,reference_seconds,target_seconds,status"
-                ") VALUES (?, 'kitchen',1200,3000,'ok')",
-                (run_id,),
-            ),
-            (
-                "DELETE FROM simulation_runs WHERE run_id=?",
-                (run_id,),
-            ),
-        ]
-
-        for statement, parameters in invalid_statements:
-            try:
-                with connect_db(path) as connection:
-                    connection.execute(statement, parameters)
-
-            except sqlite3.IntegrityError:
-                pass
-
-            else:
-                raise AssertionError(
-                    "An invalid record was accepted."
-                )
-
-        if table_counts(path) != expected:
-            raise AssertionError(
-                "Integrity checks changed saved records."
-            )
-
-    print(
-        "PASS: save/read, repeat initialization, "
-        "foreign keys, duplicates, and constraints"
-    )
-    print(
-        "Temporary verification data removed; "
-        "app.db was not changed by this check."
-    )
+        return {table: connection.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
+                for table in TABLES}
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--verify", action="store_true")
     args = parser.parse_args()
-
     if args.verify:
-        verify_setup()
+        from backend.verify_persistence import verify_schema
+        verify_schema()
         return
-
     init_db()
-
-    print("Database ready:", DB_PATH)
-
+    print("Database ready:", database_path())
+    print("Schema version:", SCHEMA_VERSION)
     for name, count in table_counts().items():
         print(f"{name}: {count} rows")
 

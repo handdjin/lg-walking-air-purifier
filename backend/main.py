@@ -1,5 +1,7 @@
 import asyncio
+import hashlib
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import Literal
 
 from fastapi import FastAPI, HTTPException
@@ -7,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from ai.predict import Predictor, predict_from_simulator
+from backend.repository import RunRecorder
 from simulation import Simulator
 from simulation.controller import choose_destination
 
@@ -16,6 +19,18 @@ from backend.auth import verify_token
 
 simulator = Simulator()
 predictor = Predictor()
+MODEL_FILE = Path(__file__).resolve().parents[1] / "ai/artifacts/uniform20_model.joblib"
+MODEL_VERSION = "sha256:" + hashlib.sha256(MODEL_FILE.read_bytes()).hexdigest()
+recorder = None
+
+
+def ensure_recorder():
+    global recorder
+    if recorder is None:
+        recorder = RunRecorder(simulator, MODEL_VERSION)
+    if recorder.simulator is not simulator:
+        raise RuntimeError("Create a new recorder when replacing the simulator.")
+    return recorder
 
 latest_prediction = None
 latest_decision = None
@@ -55,13 +70,19 @@ def auto_decision():
     seconds = state["simulation_time_seconds"]
 
     if seconds % 600 == 0 and last_prediction_seconds != seconds:
-        latest_prediction = predict_from_simulator(predictor, simulator)
+        store = ensure_recorder()
+        store.sync(source="automatic" if active_mode == "auto" else "manual")
+        previous_days = store.previous_days()
+        latest_prediction = predict_from_simulator(
+            predictor, simulator, previous_days=previous_days)
+        store.save_forecast(latest_prediction, state["observations"], previous_days)
         last_prediction_seconds = seconds
         latest_decision = None
         if (active_mode == "auto" and latest_prediction["status"] == "ok"
                 and not state["remaining_steps"]):
             latest_decision = choose_destination(
                 simulator, latest_prediction["predictions"], threshold=20)
+            store.save_decision(latest_decision, key=f"forecast:{seconds}")
 
     if (active_mode != "auto" or not latest_decision or state["remaining_steps"]
             or latest_decision["decided_at_seconds"] != seconds - seconds % 600):
@@ -71,6 +92,7 @@ def auto_decision():
         return
     if latest_decision["action"] == "move" and seconds % 600 == 0:
         simulator.move_to(latest_decision["target_room"])
+        ensure_recorder().sync(source="automatic")
         return
 
     phase = ((simulator.simulation_day - 1) * 3 % 10) * 60
@@ -85,17 +107,26 @@ def auto_decision():
                 simulator.move_to(room)
                 latest_decision = {**latest_decision, "action": "move",
                                    "reason": "stale_measurement", "target_room": room}
+                store = ensure_recorder()
+                store.save_decision({**latest_decision, "decided_at_seconds": seconds,
+                                     "forecast_reference_seconds": latest_decision["decided_at_seconds"]},
+                                    key=f"stale:{seconds}")
+                store.sync(source="automatic")
 
 
 def advance_simulation():
     global active_mode, latest_prediction, latest_decision, last_prediction_seconds
     if simulator.get_state()["is_running"]:
+        store = ensure_recorder()
         if active_mode == "auto":
             initial_patrol()
         auto_decision()
         state = simulator.step()
+        # Flush measurements and day_finished BEFORE next_day() clears history.
+        store.sync(source="automatic" if active_mode == "auto" else "manual")
         if state["finished"]:
             simulator.next_day()
+            store.begin_next_day()
             latest_prediction = latest_decision = last_prediction_seconds = None
         if not state["remaining_steps"]:
             active_mode = selected_mode
@@ -112,12 +143,20 @@ async def simulation_loop():
 
             traceback.print_exc()
             simulator.pause()
+            if recorder is not None:
+                try:
+                    recorder.finish("error")
+                except Exception:
+                    traceback.print_exc()
 
         await asyncio.sleep(1.0)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Exactly one backend worker owns the shared in-memory simulation.
+    RunRecorder.recover_open_runs()
+    ensure_recorder()
     task = asyncio.create_task(simulation_loop())
 
     try:
@@ -129,6 +168,8 @@ async def lifespan(app: FastAPI):
             await task
         except asyncio.CancelledError:
             pass
+        simulator.pause()
+        recorder.finish("interrupted")
 
 
 app = FastAPI(
@@ -162,6 +203,7 @@ def home():
 def status():
     return {
         **simulator.get_state(),
+        "run_id": recorder.run_id if recorder is not None else None,
         "mode": selected_mode,
         "active_mode": active_mode,
         "ai_prediction": latest_prediction,
@@ -177,11 +219,13 @@ async def get_status():
 @app.post("/mode")
 async def set_mode(request: ModeRequest):
     global selected_mode, active_mode, latest_decision
+    store = ensure_recorder()
     selected_mode = request.mode
     if not simulator.get_state()["remaining_steps"]:
         active_mode = selected_mode
     if selected_mode == "manual":
         latest_decision = None
+    store.record_event("mode_requested", {"mode": selected_mode, "active_mode": active_mode}, "manual")
     return status()
 
 
@@ -190,7 +234,14 @@ async def move(request: MoveRequest):
     if selected_mode != "manual" or active_mode != "manual":
         raise HTTPException(status_code=409, detail="Manual mode must be active to select a room.")
     try:
+        store = ensure_recorder()
         simulator.move_to(request.target_room)
+        store.sync(source="manual")
+        state = simulator.get_state()
+        store.save_decision({"decided_at_seconds": state["simulation_time_seconds"],
+                             "action": "move" if state["remaining_steps"] else "stay",
+                             "target_room": request.target_room, "reason": "manual_request"},
+                            source="manual")
         return status()
     except ValueError as error:
         raise HTTPException(
@@ -215,8 +266,11 @@ async def reset():
     global latest_decision
     global last_prediction_seconds
 
-    global selected_mode, active_mode
+    global selected_mode, active_mode, recorder
+    previous = ensure_recorder()
+    previous.finish("reset")
     simulator.reset()
+    recorder = RunRecorder(simulator, MODEL_VERSION, path=previous.path)
     selected_mode = active_mode = "auto"
 
     latest_prediction = None
@@ -229,7 +283,12 @@ async def reset():
 @app.post("/start")
 async def start():
     try:
-        return simulator.start()
+        store = ensure_recorder()
+        if store.status in ("error", "reset", "interrupted", "completed"):
+            raise HTTPException(status_code=409, detail="Reset before starting a new run.")
+        simulator.start()
+        store.sync(source="manual")
+        return status()
     except ValueError as error:
         raise HTTPException(
             status_code=400,
@@ -239,12 +298,17 @@ async def start():
 
 @app.post("/pause")
 async def pause():
-    return simulator.pause()
+    store = ensure_recorder()
+    simulator.pause()
+    store.sync(source="manual")
+    return status()
 
 
 @app.get("/predict")
 async def predict():
-    return predict_from_simulator(predictor, simulator)
+    if recorder is None:
+        raise HTTPException(status_code=503, detail="Simulation storage is not initialized.")
+    return predict_from_simulator(predictor, simulator, previous_days=recorder.previous_days())
 
 @app.get("/history")
 async def get_history():

@@ -144,7 +144,7 @@ class Predictor:
         }
 
 
-def predict_from_simulator(predictor, simulator):
+def predict_from_simulator(predictor, simulator, *, previous_days=None):
     """Convert simulator observations and request a forecast."""
     state = simulator.get_state()
     seconds = state["simulation_time_seconds"]
@@ -183,7 +183,7 @@ def predict_from_simulator(predictor, simulator):
     return predictor.predict_rooms(
         now_minute=seconds // 60,
         observations=observations,
-        previous_days=simulator.previous_days,
+        previous_days=(simulator.previous_days if previous_days is None else previous_days),
     )
 
 
