@@ -1,0 +1,1694 @@
+\documentclass[conference]{IEEEtran}
+
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algorithmic}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{xcolor}
+\usepackage[T1]{fontenc}
+\usepackage{array,booktabs,url}
+\newlength{\tablebodywidth}
+\newcommand{\pmfine}{\ensuremath{\mathrm{PM}_{2.5}}}
+\newcommand{\pmunit}{\ensuremath{\mu\mathrm{g}/\mathrm{m}^3}}
+% Place PNG or PDF figure files next to this source. The basenames appear in
+% the figure commands. The document also typesets without the image files.
+\newcommand{\reportfigure}[1]{%
+  \IfFileExists{#1.png}{\includegraphics[width=.94\columnwidth,height=.34\textheight,keepaspectratio]{#1.png}}{%
+    \IfFileExists{#1.pdf}{\includegraphics[width=.94\columnwidth,height=.34\textheight,keepaspectratio]{#1.pdf}}{%
+      \fbox{\parbox[c][18mm][c]{.82\columnwidth}{\centering\footnotesize Original figure\par\texttt{#1}}}}}}
+\begin{document}
+\title{Proactive Autonomous Navigation System for Air Purifiers}
+\author{
+\IEEEauthorblockN{Haewon Kwon}
+\IEEEauthorblockA{\textit{Department of Information Systems}\\
+\textit{Hanyang University}\\
+Seoul, Republic of Korea\\
+hw030302@hanyang.ac.kr}
+\and
+\IEEEauthorblockN{Dongjin Son}
+\IEEEauthorblockA{\textit{Department of Information Systems}\\
+\textit{Hanyang University}\\
+Seoul, Republic of Korea\\
+djson322@hanyang.ac.kr}
+\and
+\IEEEauthorblockN{Yena Jo}
+\IEEEauthorblockA{\textit{Department of Information Systems}\\
+\textit{Hanyang University}\\
+Seoul, Republic of Korea\\
+yena1743@hanyang.ac.kr}
+}
+\maketitle
+
+\begin{abstract}
+This project implements an AI-Based Proactive Autonomous Mobile Air Purification System in a three-room virtual home. A Random Forest model predicts \pmfine{} concentrations 30 minutes ahead, while an autonomous controller selects destinations based on predicted pollution and travel time using A* pathfinding. Purification is activated according to measured concentrations. The LG Airy application provides Cognito authentication, real-time monitoring, automatic and manual controls, and activity history through a FastAPI backend. The model was trained using six synthetic household profiles over 60 days each, achieving a test MAE of 0.571 \pmunit{} compared with 1.397 for the latest-measurement baseline. These results represent synthetic-data prediction performance rather than real-world effectiveness. Persistent database integration remains under development.
+\end{abstract}
+
+\begin{IEEEkeywords}
+Air Quality Prediction, Machine Learning, Autonomous Navigation, Proactive Purification, Simulation
+\end{IEEEkeywords}
+
+\begin{table}[!t]
+\caption{Project Team Roles}
+\label{tab:t0}
+\centering\footnotesize
+\setlength{\tabcolsep}{3pt}
+\setlength{\tablebodywidth}{\dimexpr\columnwidth-18pt\relax}
+\begin{tabular}{>{\raggedright\arraybackslash}p{0.220\tablebodywidth}>{\raggedright\arraybackslash}p{0.180\tablebodywidth}>{\raggedright\arraybackslash}p{0.600\tablebodywidth}}
+\toprule
+\textbf{Role} & \textbf{Name} & \textbf{Responsibilities} \\
+\midrule
+User & Yena Jo & Evaluates app usability, tests monitoring and control functions, and provides user feedback. \\
+Customer & Yena Jo & Reviews requirements and objectives. Develops synthetic data, forecasting, and comparative evaluation. \\
+Software Developer & Haewon Kwon & Develops the simulation, environment, navigation, movement, and purification components and coordinates integration. \\
+Development Manager & Dongjin Son & Develops the mobile app and integration, coordinates schedules and GitHub collaboration, and oversees documentation and deliverables. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Introduction}
+
+\subsection{Motivation}
+
+1) Indoor air quality changes over time and between rooms as household activities occur. Cooking, living-room cleaning, and bedding preparation can produce different concentration patterns. A multiroom system must therefore consider when and where pollution develops rather than relying on conditions at one fixed location. This project represents those activities in a reproducible virtual residence.
+
+2) A stationary purifier cannot autonomously relocate when another room requires attention. Manual relocation increases user effort, while fixed patrols may cause unnecessary movement. With only an onboard sensor, a mobile purifier also lacks fresh measurements in unvisited rooms. These constraints motivate forecasting from previously obtained observations and selecting destinations before anticipated pollution becomes severe.
+
+\subsection{Problem Statement (Client's Needs)}
+
+\subsubsection{Physical Limitations of Stationary Air Purifiers in Multiroom Environments}
+
+A purifier installed in one room cannot directly respond in another without relocation. Installing multiple units increases equipment and space requirements, whereas manually moving one unit requires user intervention. The project addresses this problem through software-based autonomous movement between a living room, kitchen, and bedroom; it does not claim to implement physical locomotion hardware.
+
+\subsubsection{Limitations of Reactive Air Purification Based on Current Air Quality}
+
+Responding only after a measured concentration rises can delay intervention, especially when the purifier has not recently visited the affected room. The system therefore needs room-level forecasts derived from available measurements and historical activity patterns. Hidden current concentrations in remote rooms must not be treated as sensor observations.
+
+\subsubsection{Unnecessary Movement and Inefficient Purification Destination Selection}
+
+Repeatedly following a fixed room order can waste travel, but always selecting the largest forecast ignores movement cost. Destination selection must combine predicted pollution with reachable travel time and include a waiting option. Lower movement alone is not sufficient evidence of improved air quality, because infrequent visits can leave observations stale.
+
+\subsubsection{Need for Autonomous Decision-Making and Replanning in Dynamic Environments}
+
+New measurements may differ from forecasts, so later decisions must use updated observations and measurement ages. The current prototype reconsiders destinations periodically and includes stale-observation visits. Navigation operates on a fixed map with static obstacles; dynamic obstacle detection and online map revision remain outside the implemented scope.
+
+\subsubsection{User Burden in Air Purifier Management and the Need for Automatic Control}
+
+Users need an interface for inspecting the purifier's location, measurements, forecasts, and activity without repeatedly deciding every destination. Automatic operation should coexist with manual room selection, pause/resume, reset, and clear connection feedback. Authentication provides access to a shared demonstration simulator rather than a separate household environment for each account.
+
+\subsection{Solution}
+
+The project implements an AI-Based Proactive Autonomous Mobile Air Purification System in a virtual residence. It combines room-level forecasting, destination selection, navigation, local sensing, and a mobile interface. Prediction supports early movement; measurement determines whether purification is activated. The implementation and empirical claims are limited to the synthetic environment.
+
+\subsubsection{AI-Based Future Air Quality Prediction and Proactive Purification}
+
+The implemented Random Forest predicts \pmfine{} 30 minutes ahead for all three rooms at a common reference time. Its eight inputs combine the latest local measurement and age with time, room identity, and summaries of preceding measured days. Forecasts guide early movement, while actual purification activation is determined by local measurements. This separates anticipated risk from directly observed conditions.
+
+\subsubsection{Autonomous Navigation and Adaptive Control}
+
+A destination controller ranks eligible rooms using predicted pollution and travel time. A* computes a route, and the simulator executes it one grid cell per tick. Arrival measurements and later stationary readings update the information used in subsequent forecasts. Post-arrival dwell and stale-observation checks limit switching and support reinspection.
+
+\subsubsection{Real-Time Monitoring and User Control}
+
+The LG Airy application provides Cognito-based access, a live floor plan, Home and History views, and automatic/manual controls. Authenticated REST requests connect the interface to FastAPI; HTTP polling refreshes observations, forecasts, and operating activity. The implementation is a software simulation, and comparative results must be interpreted within the version and synthetic scenarios actually evaluated.
+
+The integrated prototype supports investigation of proactive control through reproducible simulation. Historical policy-comparison findings are separated from the latest model and controller, and no real-home benefit or general superiority is assumed.
+
+\subsection{Research on Any Related Software}
+
+\subsubsection{LG PuriCare AI Objet Collection 360\textdegree{} Air Purifier M7}
+
+\emph{a. Function}
+
+The LG PuriCare AI Objet Collection 360\textdegree{} Air Purifier M7 monitors indoor air quality and automatically adjusts purification intensity. Its AI Custom Operation function learns indoor air-quality patterns, predicts pollution changes, and optimizes purification accordingly \cite{ref1,ref2,ref3}.
+
+\emph{b. Similarity with our Service}
+
+Both systems use AI-based air-quality prediction to improve purification efficiency. They aim to respond to anticipated pollution rather than relying solely on current air-quality measurements.
+
+\emph{c. Difference from our Service}
+
+LG M7 uses predicted air-quality changes to adjust purification intensity at its installed location. In contrast, our system predicts room-level \pmfine{} concentrations 30 minutes ahead and autonomously moves to the room requiring purification, considering both predicted pollution risk and travel cost.
+
+\subsubsection{ECOVACS AIRBOT Z1}
+
+\emph{a. Function}
+
+ECOVACS AIRBOT Z1 is an autonomous mobile air-purification robot that maps indoor spaces and navigates to designated areas. Its Linked Purification function allows the robot to automatically move to a specific area and begin purification when a connected air-quality monitor detects pollution above a configured threshold \cite{ref4}.
+
+\emph{b. Similarity with our Service}
+
+Both systems combine autonomous navigation and air purification. They can move between indoor areas and perform purification based on air-quality information.
+
+\emph{c. Difference from our Service}
+
+ECOVACS AIRBOT Z1 initiates movement when a connected monitor detects that air pollution has reached a predefined threshold. In contrast, our system uses AI to predict \pmfine{} concentrations 30 minutes ahead and proactively selects a destination before the anticipated pollution increase. It also considers travel cost when determining the destination.
+
+\section{Requirements}
+
+\subsection{Application Launch and User Login}
+
+\subsubsection{Initial access}
+
+When the application opens, the root layout shall check session availability while the interface resources load. Users without a saved session shall see the authentication screens; signed-in users shall access the main screens. The API shall independently validate access tokens. Actual LG appliance registration is not required.
+
+\subsubsection{Login credentials and validation}
+
+The login screen shall provide email, masked password, and Sign In controls. The interface shall reject missing credentials and invalid email format before authentication. The prototype now includes Cognito sign-up, email-code confirmation, and code resend screens, rather than being restricted to a pre-created local demonstration account.
+
+\subsubsection{Authentication result and logout}
+
+Successful Cognito authentication shall open the main application. Authentication failures shall display an error, and sign-out shall clear the application session and return to sign-in. Simulation requests shall carry a Cognito access token; missing or invalid credentials shall be rejected by the backend. Device-level session and expiration behavior still require end-to-end verification.
+
+\subsection{Main Dashboard and Simulation Control}
+
+\subsubsection{Main screen}
+
+After login, the dashboard shall show the shared three-room map, current purifier coordinates, virtual time, selected mode, and current activity. Walls, doors, and fixed obstacles shall correspond to the same map used by navigation. Displayed measurements and forecasts shall remain distinguishable.
+
+\subsubsection{Start, pause, and reset}
+
+Start shall enable the server-controlled simulation, and Pause shall freeze virtual time and movement without clearing current state. Reset shall restore the initial position, concentrations, daily observation state, retained historical measurements, and automatic mode. One server-managed loop shall control execution. The current backend also advances automatically to the next virtual day when a day ends.
+
+\subsubsection{Mode selection}
+
+Automatic mode shall use the controller to select destinations. Manual mode shall allow room selection only after both selected and active modes are manual. A mode request during travel shall take effect after the active route finishes. Purification remains measurement-controlled in both modes; a separate user-operated purification toggle is not implemented.
+
+\subsection{Virtual Indoor Air Quality and Measurement}
+
+\subsubsection{Air quality changes over time}
+
+Room \pmfine{} shall change according to cooking, cleaning, bedding events, natural decay, and active local purification. Seeded event schedules shall vary start times and durations. Current event emissions use fixed activity-specific rates; inter-room diffusion and an additional random background-noise term are not implemented.
+
+\subsubsection{Historical data preparation}
+
+The generator shall produce 60 virtual days for each of six household activity profiles. At 144 ten-minute timestamps per day and three rooms, the checked-in dataset contains 155,520 ground-truth records, with separate observation and supervised-data files. These values are synthetic records, not measurements collected from real households.
+
+\subsubsection{Measurement constraints}
+
+The purifier shall obtain observations only in the room at its actual coordinates. Unvisited rooms shall retain the last measured value and its timestamp, or remain unmeasured. Ground truth shall be reserved for labels and evaluation and shall not enter online prediction inputs or the app as fresh remote measurements.
+
+\subsection{Future Air Quality Prediction}
+
+\subsubsection{Prediction request and outcome}
+
+A trained model shall estimate each room's \pmfine{} 30 virtual minutes ahead. The running backend shall request forecasts at ten-minute boundaries and return room-keyed values using the same reference and target times. Automatic destination selection shall use forecasts only when their status is valid.
+
+\subsubsection{Available input information}
+
+Inputs shall comprise room ID, hour, minute, last measured \pmfine{}, elapsed minutes, days observed, historical mean, and polluted-day ratio. Historical summaries shall use preceding measured days only. Weekday, home ID, current hidden room concentrations, future observations, and future current-day activity schedules are not model inputs.
+
+\subsubsection{Prediction status}
+
+Unavailable predictions shall remain null with an explicit status, including initial\_\allowbreak{}patrol\_\allowbreak{}required or cross\_\allowbreak{}day\_\allowbreak{}horizon\_\allowbreak{}not\_\allowbreak{}supported. Initial patrol shall collect missing room observations. A missing or incompatible model currently prevents normal startup; the reviewed build does not implement a general fixed-patrol fallback for arbitrary model-loading errors.
+
+\subsection{Autonomous Movement and Proactive Purification}
+
+\subsubsection{Destination selection}
+
+The automatic controller shall consider forecast pollution and travel time when selecting an eligible reachable room. The backend currently passes an experimental threshold of 20 \pmunit{} and travel weight 1. The controller may select movement, staying, or waiting; these settings are not health standards or guarantees of optimal control.
+
+\subsubsection{Route and travel}
+
+A* shall plan a route through valid neighboring cells and doors while avoiding walls and obstacles. The simulator shall move one cell per tick. Invalid or unreachable requests shall preserve the previous state rather than teleporting the purifier. Unreachable candidates shall be identified in destination-selection details.
+
+\subsubsection{Purification after arrival}
+
+Arrival shall immediately update the local measurement. Measured concentration at least 20 shall enable purification, and concentration at most 15 shall disable it. Purification shall reduce the simulated concentration gradually, and travel time shall not count as purification. Forecast-based early arrival shall not force purification when the measured concentration is below the activation threshold.
+
+\subsubsection{Unexpected conditions}
+
+The controller shall preserve active routes and apply a ten-minute post-arrival dwell check before additional automatic movement. It shall also support reinspection of stale observations when waiting and not purifying. The current implementation does not provide a separate emergency-priority override that guarantees cancellation of any forecast-based route.
+
+\subsection{Monitoring, History, and User Feedback}
+
+\subsubsection{Live visualization}
+
+The dashboard shall display position, destination, virtual time, observations, forecasts, and idle/moving/measuring/purifying activity indicators. Observation age shall distinguish older measurements from new ones. The measurement indicator describes recent acquisition rather than an additional sensor delay.
+
+\subsubsection{Decision explanation and history}
+
+The interface shall display the latest structured destination decision and an activity history obtained from the backend. Current history includes movement, arrival, measurement, purification, and simulation events. It does not provide a permanent archive of all past forecasts and decisions. Reset, daily rollover, or server restart clears the relevant in-memory history.
+
+\subsubsection{Communication failure}
+
+Failed requests shall produce offline or command-error feedback instead of presenting a successful fresh update. Reconnect shall fetch the current server state and map without starting a second simulation. The interface shall avoid overlapping polling requests and conflicting command submissions.
+
+\subsection{Evaluation of the Proactive Strategy}
+
+\subsubsection{Comparison conditions}
+
+Fixed patrol and predictive control shall be compared under matched map, event schedules, initial conditions, movement speed, sensor rules, and purification parameters. The fixed baseline departs every 20 virtual minutes in living-room, kitchen, and bedroom order. Each evaluation shall identify the actual policy and source/model versions used.
+
+\subsubsection{Performance measures}
+
+Operational measures shall include mean \pmfine{}, room-minutes above a declared threshold, excess pollution accumulation, and travel distance. Forecasting MAE shall be evaluated separately on held-out dates. Historical evaluation outputs shall not be presented as results for a changed model or controller, and synthetic room-minutes shall not be described as measured human exposure.
+
+\section{Development Environment}
+
+\subsection{Choice of Software Development Platform}
+
+1. Development Platform
+
+(a) Development uses existing team laptops. The previous
+
+report records Apple MacBook Air computers with M2-- M3 processors, 8--16 GB RAM, and macOS Ventura, Sequoia, or Tahoe. These are previously reported configurations; current per-member OS builds and deployment hardware should be confirmed.
+
+(b) The implementation combines a TypeScript React Native
+
+application with Python prediction, navigation, and simulation. No physical purifier is purchased or constructed for this prototype.
+
+(c) Local development is retained, while the repository
+
+documents an Amazon EC2 backend and configures an HTTPS demo endpoint. Cognito supplies authentication. Source configuration does not independently establish current cloud availability, instance capacity, or cost.
+
+2. Programming Languages
+
+\subsubsection{Python \cite{ref5}}
+
+(a) Python implements synthetic data generation, feature
+
+preparation, Random Forest training/inference, environment dynamics, destination control, A* navigation, and FastAPI integration.
+
+(b) scikit-learn, pandas, NumPy, and joblib support the
+
+learning pipeline. Sharing Python code allows the generator and online simulator to use the same environmental and measurement rules.
+
+(c) Python was selected for its machine-learning ecosystem
+
+and direct integration of simulation and control, without requiring physical-device firmware.
+
+\subsubsection{TypeScript}
+
+(a) TypeScript implements the mobile screens, navigation,
+
+authentication flow, shared request client, and typed simulation-state interfaces.
+
+(b) Static interfaces describe room observations, forecasts,
+
+operating modes, and controller responses, improving consistency between the app and backend.
+
+(c) React Native and Expo support a shared application
+
+codebase. Actual platform compatibility and device authentication require integration testing rather than being assumed from shared source alone.
+
+3. Development Tools and Technologies
+
+\subsubsection{React Native + Expo --- Mobile Application Development}
+
+\cite{ref7,ref8}
+
+\emph{(a) React Native and Expo implement the LG Airy}
+
+authentication, Home, and History interfaces. The manifest declares React Native 0.88.1 and Expo \textasciitilde{}58.0.23.
+
+(b) Expo provides project execution, routing, device-
+
+development tooling, and access to storage and other native facilities. The checked-in package lock supports dependency reproduction.
+
+\emph{(c) The interface uses shared components and a common}
+
+map for automatic/manual controls and monitoring. Source availability is distinguished from completed physical-device verification.
+
+\subsubsection{FastAPI --- Backend Development \cite{ref9}}
+
+(a) FastAPI exposes map, state, prediction, history, mode,
+
+movement, and execution-control endpoints and owns the shared simulation loop.
+
+(b) The model, simulation, and control components execute
+
+in the same Python process. Cognito access-token validation is applied through a FastAPI dependency.
+
+\emph{(c) The current application uses REST APIs and HTTP}
+
+polling. Although FastAPI supports WebSockets, a WebSocket endpoint is not implemented in this snapshot.
+
+\subsubsection{scikit-learn --- Machine Learning \cite{ref6,ref13}}
+
+(a) scikit-learn 1.7.2 is recorded in the model metadata.
+
+RandomForestRegressor is combined with room-name encoding in a preprocessing pipeline.
+
+\emph{(b) The training script compares two maximum-depth}
+
+settings using validation MAE, evaluates the selected model on the test split, and saves preprocessing and model together.
+
+(c) The current forest uses 120 trees, minimum leaf size 3,
+
+and random seed 42. Its result is a synthetic-data regression model, not evidence of physical purifier performance.
+
+\subsubsection{Pandas + NumPy --- Data Processing and Analysis}
+
+(a) pandas and NumPy support CSV processing, numeric
+
+validation, feature/label separation, error calculation, and result analysis.
+
+\emph{(b) Separate files preserve complete simulated}
+
+concentrations, actual visit measurements, and supervised samples. Future labels are excluded from the selected feature columns.
+
+\emph{(c) The data workflow and model evaluation remain in}
+
+Python, making split checks and reproduction easier to coordinate with the simulator.
+
+\subsubsection{A* Algorithm --- Autonomous Pathfinding \cite{ref12}}
+
+(a) A* remains the implemented path planner in
+
+simulation/pathfinding.py. The predictor selects no grid coordinates itself.
+
+\emph{(b) The planner combines traveled cost with Manhattan}
+
+distance on a four-connected, unit-cost grid and reconstructs the start-to-goal path.
+
+(c) It avoids static blocked cells and reports disconnected
+
+destinations. Dynamic obstacle mapping and a replacement navigation algorithm are not implemented.
+
+\subsubsection{Python Simulation --- Virtual Environment \cite{ref5}}
+
+(a) The simulator models a three-room residence, ten-second
+
+movement ticks, one-minute concentration updates, local sensing, and purification.
+
+(b) Seeded event schedules and shared update functions
+
+support repeatable data generation and paired experiments. Actual travel time affects arrival and purification.
+
+(c) The backend supports successive virtual days and retains
+
+up to 14 preceding measured days. Each day resets concentrations and position, so this is a simplified repeated-day experiment.
+
+\subsubsection{SQLite --- Database \cite{ref10}}
+
+(a) SQLite remains the intended lightweight persistence
+
+technology. Local schema/storage work is ongoing, but the reviewed GitHub snapshot contains no integrated SQLite persistence module.
+
+(b) Current online state, observation history, and activity
+
+events are stored in memory. Offline datasets and evaluation outputs are stored as CSV/JSON, with joblib model artifacts.
+
+(c) Cognito handles accounts and authentication. The report
+
+does not claim that user passwords, sessions, or durable run histories are currently stored in a project SQLite database.
+
+\subsubsection{HTTP Polling --- Real-time Communication}
+
+(a) HTTP polling is used to periodically retrieve simulation
+
+states, air quality measurements, prediction results, and operation history from the backend server.
+
+(b) The Home screen requests system status every second,
+
+while the History screen requests operation history every five seconds when active.
+
+(c) HTTP polling was selected to simplify communication
+
+between the mobile application and the backend server while providing near-real-time monitoring.
+
+\subsubsection{Figma --- UI/UX Design}
+
+(a) The repository describes the LG Airy interface as Figma-
+
+based and includes shared visual assets and components for authentication, Home, and History.
+
+(b) The implementation distinguishes loading, offline,
+
+automatic/manual, movement, measurement, and purification states rather than using static demonstration values.
+
+\emph{(c) A Figma MCP workflow is not established by the}
+
+checked-in source. Its use is not claimed as a completed integration.
+
+\subsubsection{VS Code --- Code Editor}
+
+(a) Visual Studio Code is used to edit Python, TypeScript,
+
+and project documentation and to run terminal commands.
+
+(b) Using one editor supports inspection of the backend,
+
+simulator, learning scripts, and mobile application in one project.
+
+(c) Git status and diffs are checked before synchronizing
+
+shared files, particularly backend/main.py. Editor and extension versions require local confirmation.
+
+\subsubsection{Git + GitHub --- Version Control and Collaboration}
+
+(a) Git and GitHub manage code, artifacts, reports, and team
+
+changes. This revision describes commit 71ea25363d32fd6b00a46b08a29e64e4222444af.
+
+(b) The documented current workflow uses the shared main
+
+branch and git pull --rebase before pushing. Branches and pull requests are available but are not asserted to be the workflow used for every contribution.
+
+(c) LaTeX source and reports are maintained under docs/.
+
+Documentation should identify its implementation snapshot and preserve the difference between committed and local unfinished work.
+
+\subsubsection{ChatGPT/Codex --- AI-Assisted Development}
+
+(a) Claude Code was listed in the earlier development plan.
+
+The current repository documents ChatGPT/Codex as an AI-assisted development tool; this does not establish exclusive or universal use of either assistant.
+
+(b) AI assistance supports understanding code, drafting
+
+implementations, and debugging, while team members remain responsible for checking requirements and behavior.
+
+(c) Generated code and technical claims require review and
+
+execution-based verification. Neither assistant use nor a proposed Figma MCP connection substitutes for integration-test evidence.
+
+\subsubsection{AWS EC2 --- Cloud Computing \cite{ref14}}
+
+(a) Amazon EC2 provides a cloud-based computing
+
+environment for the backend server, AI prediction model, and simulation engine.
+
+(b) Cloud deployment enables the mobile application to
+
+access the backend server without being connected to the same local network.
+
+(c) The backend application runs through Uvicorn, and
+
+systemd manages automatic startup and process execution.
+
+\subsubsection{AWS Cognito \& Amplify --- User Authentication \cite{ref15,ref16}}
+
+(a) AWS Cognito provides user registration, email
+
+verification, sign-in, and token-based authentications.
+
+(b) AWS Amplify connects the mobile application to the
+
+Cognito User Pool.
+
+\emph{(c) The backend verifies JWT access tokens to prevent}
+
+unauthorized access to protected APIs.
+
+\subsubsection{Nginx --- Reverse Proxy \cite{ref17}}
+
+(a)Nginx receives external HTTPS request and forwards them to the FastAPI application running on local port 8000.
+
+\emph{(b) It separates external network communication from}
+
+internal application execution.
+
+\subsubsection{DuckDNS \& Certbot --- Secure Network Communication}
+
+\cite{ref19,ref20}
+
+(a) DuckDNS provides a domain name associated with the
+
+cloud server's IP address.
+
+(b) Certbot is used to obtain and configure TLS certificates.
+
+\emph{(c) HTTPS enables encrypted communication between the}
+
+mobile application and the backend server.
+
+4. Development Environment Specifications
+
+\begin{table}[!t]
+\caption{Development Environment Specifications}
+\label{tab:t1}
+\centering\footnotesize
+\setlength{\tabcolsep}{3pt}
+\setlength{\tablebodywidth}{\dimexpr\columnwidth-12pt\relax}
+\begin{tabular}{>{\raggedright\arraybackslash}p{0.330\tablebodywidth}>{\raggedright\arraybackslash}p{0.670\tablebodywidth}}
+\toprule
+\textbf{Item} & \textbf{Specification} \\
+\midrule
+Development hardware & Apple MacBook Air \\
+Operating system & macOS Ventura 13.5, Sequoia 15.1, or Tahoe 26.5.1 (previously reported) \\
+Processor & Apple M2--M3 \\
+Memory & 8--16 GB RAM \\
+Python & 3.13.2 (previously reported) \\
+Node.js & v22.14.0 (previously reported) \\
+npm & 10.9.2 (previously reported) \\
+Mobile framework & React Native 0.88.1 and Expo \textasciitilde{}58.0.23 \\
+Backend framework & FastAPI and Uvicorn \\
+Machine learning & scikit-learn 1.7.2 (model metadata) \\
+Database & SQLite planned. Current online storage is in memory. \\
+Communication & HTTPS, REST API, and HTTP polling \\
+Cloud infrastructure & Amazon EC2 \\
+Authentication & AWS Cognito and AWS Amplify \\
+Reverse proxy & Nginx \\
+Development tools & VS Code, Git, GitHub, and Codex \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Python, Node.js, npm, and laptop details above retain the previously reported values and are not new measurements of the deployed environment. Mobile versions are manifest declarations; exact installations and backend package versions require confirmation. Because hardware and macOS versions differ, compatibility on the previously identified minimum configuration (M2, 8 GB RAM, macOS Ventura 13.5) remains a validation target, not a completed test claim.
+
+5. Cost Estimation
+
+\begin{table}[!t]
+\caption{Estimated Development Costs}
+\label{tab:t2}
+\centering\footnotesize
+\setlength{\tabcolsep}{3pt}
+\setlength{\tablebodywidth}{\dimexpr\columnwidth-12pt\relax}
+\begin{tabular}{>{\raggedright\arraybackslash}p{0.500\tablebodywidth}>{\raggedright\arraybackslash}p{0.500\tablebodywidth}}
+\toprule
+\textbf{Resource} & \textbf{Estimated cost} \\
+\midrule
+Existing Apple MacBook Air & No additional cost \\
+Python and related libraries & Free \\
+React Native and Expo & Free \\
+FastAPI and SQLite & Free \\
+VS Code, Git, and GitHub & Free \\
+Figma & Free student plan \\
+Codex Plus & US\$20/month/account \\
+AWS or Google Cloud & EC2 and Cognito configured. Cost depends on usage. \\
+Nginx and Uvicorn & Free \\
+DuckDNS & Free \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Existing equipment avoids additional hardware purchases, while core open-source libraries require no license purchase. The retained Claude Code amount is a previous planning assumption, not a confirmed project expense. Actual assistant subscriptions and any paid build services should be recorded from team usage. The repository now documents EC2 hosting and Cognito authentication. A defensible cloud estimate requires instance type, operating hours, storage, traffic, user counts, and applicable allowances; those details are not recorded sufficiently to calculate a monthly total. Cloud operation is not assumed to be free.
+
+\subsection{Software in Use}
+
+1. Existing Software and Technologies The implementation integrates existing learning and navigation methods rather than claiming a new algorithm. A scikit-learn Random Forest provides concentration forecasts, A* provides grid routes, and the shared Python simulation executes movement, sensing, and purification. Cognito/Amplify, FastAPI, and Expo support authentication and application integration.
+
+2. Main Algorithms and Software
+
+\subsubsection{Random Forest}
+
+Random Forest averages predictions from decision trees. The project uses scikit-learn's RandomForestRegressor with one-hot room encoding and seven numeric inputs. Maximum depth is selected using validation data, and the current saved pipeline is uniform20\_\allowbreak{}model.joblib \cite{ref6,ref13}.
+
+\subsubsection{A* Algorithm}
+
+A* uses accumulated grid cost plus a Manhattan-distance estimate. It finds obstacle-avoiding routes on the static four-connected floor plan, and travel time is derived from the number of route steps \cite{ref12}.
+
+\subsubsection{Python Simulation}
+
+Python simulation supplies the shared environment and purifier mechanics used in data generation and online control. Seeded schedules support controlled comparisons, while separate observation and ground-truth records prevent hidden-state input leakage.
+
+\section{Specifications}
+
+\subsection{System Configuration and Operation}
+
+\subsubsection{System components}
+
+The implemented system consists of the LG Airy React Native/Expo application, a FastAPI backend, a Python simulator, the saved Random Forest pipeline, and the destination/pathfinding components. Cognito provides authentication, and the repository documents an EC2 deployment. SQLite persistence is ongoing work and is not integrated into this repository snapshot. All authenticated clients operate the same backend simulator.
+
+\subsubsection{Data exchange}
+
+The app obtains a Cognito access token and attaches it to REST requests. Home reads status approximately every second; History reads events every five seconds. The execution flow is authentication, dashboard loading, start/resume, environmental update, scheduled forecast, destination decision, travel, arrival measurement, purification, and refreshed display. WebSocket delivery is not used.
+
+\subsubsection{State management}
+
+Simulator flags track whether time is running and whether the day is finished; activity reflects movement, purification, or idle state, with a separate recent-measurement flag. FastAPI's lifespan creates one update loop. Selected and active modes are distinct so a pending change does not interrupt an active route. At day end, next\_\allowbreak{}day retains measured history, resets daily state, and starts the next synthetic day.
+
+\subsubsection{Cloud Deployment and Communication}
+
+The backend system is deployed on Amazon EC2. The mobile application communicates with the backend through HTTPS, while Nginx forwards incoming requests to the FastAPI application. User authentication is managed through AWS Cognito. \cite{ref14,ref17}
+
+\subsection{Authentication and User Control}
+
+\subsubsection{Access process}
+
+The root layout checks session availability and guards the main routes. Amplify handles Cognito sign-in, new-password requirements, and unconfirmed accounts. API requests use access tokens verified against Cognito's JWKS, RS256 signature, issuer, expiration, access-token type, and configured client ID. The application backend does not compare passwords against a SQLite account table. \cite{ref15,ref16}
+
+\subsubsection{Dashboard composition}
+
+The authenticated Home screen loads the fixed map and current state. It shows purifier coordinates, current activity, destination, measurements, forecasts, and execution controls. The interface also provides a History tab and loading, connection-failure, and reconnect views. The map and marker use backend coordinates rather than an independently simulated client position.
+
+\subsubsection{Control behavior}
+
+Start and Pause/Resume change the running flag through backend requests; Reset restores initial simulation and prediction state. A manual destination is accepted only when selected and active modes are both manual. Mode changes requested during travel wait for route completion. Manual mode selects destinations but does not add a separate purification on/off command.
+
+\subsubsection{Practical scope}
+
+The implementation includes sign-up, email confirmation, and resend-code screens in addition to sign-in and logout. It does not implement password-reset screens, social login, user-owned separate homes, physical appliance pairing, or user-editable maps. Account registration depends on the configured Cognito service and requires device/cloud verification.
+
+\subsection{Virtual Environment and Air Quality}
+
+\subsubsection{Apartment representation}
+
+house\_\allowbreak{}map.json defines a 15-by-11 grid, three room IDs, walkable cells, doors, fixed obstacles, room bounds, destination coordinates, and the initial position. The simulator, travel-time estimates, A* planner, and app use this common map. The modeled layout is fixed rather than supplied separately by each user.
+
+\subsubsection{Air-quality engine}
+
+Each room starts at 10 \pmunit{}. For current concentration C and minute emission E, the engine computes $U=C+E$ and $N=U-0.01\max(U-10,0)$. Without purification the result is N; with s seconds of purification it is $\max\{5,N\cdot 0.95^{s/60}\}$. Cooking adds 3 units per minute; cleaning and bedding add 2. The environment updates each minute while movement uses ten-second ticks. Actual stationary purification seconds are counted; background noise and inter-room diffusion are not modeled.
+
+\subsubsection{Historical dataset and observation records}
+
+generate\_\allowbreak{}data.py uses the same Simulator as online operation for six activity profiles over 60 days each. The committed files contain 155,520 ground-truth rows, 51,840 observation rows, and 148,752 supervised rows. Each home has 25,920 ten-minute room states. Patrol arrivals follow basic 10-minute, slow 20-minute, or irregular 10/20/30-minute intervals including travel. Ground truth supplies future labels and evaluation, while visit measurements supply features.
+
+\subsubsection{Local sensing}
+
+Initialization and arrival immediately record the current room's \pmfine{}, measured\_\allowbreak{}at\_\allowbreak{}seconds, and source\_\allowbreak{}minute. While stationary, a room is measured again after 600 seconds. Duplicate readings for the same room and second are suppressed. Other rooms retain last-seen observations. The 20-second is\_\allowbreak{}measuring flag is a display indication after acquisition, not a delay before measurement. Run/home/day identifiers organize offline records; online events remain in memory.
+
+\subsection{AI Model Training and Prediction}
+
+\subsubsection{Training target}
+
+The label target\_\allowbreak{}pm25\_\allowbreak{}30min is the target room's simulated concentration at the reference time plus 30 minutes. It reflects the documented reference patrol and measurement-based purification. It is not a guaranteed concentration under no future purification. Samples are created after all rooms have observations and only when the target remains within the same day.
+
+\subsubsection{Feature preparation and validation}
+
+Inputs are room\_\allowbreak{}id, hour, minute, last\_\allowbreak{}measured\_\allowbreak{}pm25, minutes\_\allowbreak{}since\_\allowbreak{}measurement, days\_\allowbreak{}observed, historical\_\allowbreak{}mean, and polluted\_\allowbreak{}day\_\allowbreak{}ratio. For at most 14 preceding measured days, the code selects each day's observed peak within 15 minutes of the target time of day, then computes its count, mean, and fraction at least 20. No history gives 0, -1, -1. Weekday and home ID are excluded. Each home's days 1--42 train, 43--51 validate, and 52--60 test, yielding 104,148/22,284/22,320 rows. Only earlier available observations may cross a split boundary as history.
+
+\subsubsection{Model application}
+
+A pipeline combines OneHotEncoder and RandomForestRegressor with 120 trees, minimum leaf size 3, and random seed 42. Depth 8 and unrestricted depth are compared on validation MAE, selecting unrestricted depth. The backend loads ai/artifacts/uniform20\_\allowbreak{}model.joblib and requests forecasts at ten-minute boundaries. Responses include reference minute, target minute, status, and three room values. Actual measurement seconds are converted to fractional minutes. Unavailable results are null; there is no general model-error fixed-patrol fallback. \cite{ref6}
+
+\subsubsection{Interpretation}
+
+The forecast estimates the future concentration learned under reference observation/control conditions. An autonomous intervention may change that future outcome, and very old observations may differ from the training distribution. Model MAE must therefore be separated from operational policy evaluation. The recorded validation MAE is 0.5709 and test MAE is 0.5707 \pmunit{}, versus 1.3974 for a latest-measurement test baseline. The split evaluates later days of the same six profiles, not unseen real households.
+
+\subsection{Autonomous Navigation and Purification Control}
+
+\subsubsection{Selecting a room}
+
+At ten-minute forecast boundaries, reachable candidates are scored as predicted \pmfine{} minus travel minutes, with travel weight 1. The live backend passes threshold 20, although the reusable controller's default remains 35. Ties prefer shorter travel then room ID. Decisions contain move/stay/wait, target, reason, and candidate details. When waiting and not purifying, day-phased checks can visit the oldest other-room reading at age 120 minutes during days 1--7 or 180 minutes thereafter. These are experimental policy settings.
+
+\subsubsection{Finding and following a route}
+
+A* operates on four-connected walkable cells with unit step cost and a Manhattan-distance heuristic. It returns coordinates including the start and goal; the simulator reserves the remaining path and traverses one cell per tick. Walls and furniture are excluded. The same planner supplies travel-time estimates. Online dynamic-obstacle updates are not implemented. \cite{ref12}
+
+\subsubsection{Arrival and cleaning}
+
+Arrival immediately measures the local concentration and updates the latest observation. Measured \pmfine{} at least 20 starts purification; at most 15 stops it, while intermediate values preserve the previous state. Movement disables purification. Stationary purification seconds contribute gradually to the next minute update. Updated readings enter subsequent scheduled forecasts; the recent-measurement display does not postpone this update.
+
+\subsubsection{Exceptions and stability}
+
+Invalid or unreachable destinations leave the existing movement state intact. Automatic decisions do not replace an active route, and a ten-minute post-arrival dwell check limits routine movement. A mode change during travel is deferred until arrival rather than discarding the route. Current code does not implement a distinct emergency override, dynamic map replanning, or an unconditional guarantee of measured-risk priority over every forecast move.
+
+\subsection{Monitoring, Data Management, and Operation}
+
+\subsubsection{Realtime view}
+
+The Home screen polls status every second while focused and obtains the shared map. It renders backend position and available path/destination information, measured versus predicted concentrations, and current activity.
+
+Observations include their age; remote rooms retain old readings until actually revisited. Shared app types and server state keep displayed values separate from hidden actual concentrations.
+
+\subsubsection{Database records}
+
+The reviewed repository has no integrated SQLite run-history module. The backend stores current state, forecasts, and simulation events in memory; CSV/JSON files and joblib artifacts support offline training and evaluation. Cognito supplies account management instead of a local account/session table. Proposed durable run, measurement, prediction, decision, and activity records remain pending work and must not be reported as saved across resets or server restarts.
+
+\subsubsection{History and explanation}
+
+GET /history returns the current simulator event list, and the History screen refreshes it every five seconds. Events include reset, start/pause, movement requests, arrival, measurements, and purification on/off. The latest decision is separately included in status with a structured reason. This is not a permanent database of every historical prediction or decision. Daily rollover and reset replace the current event list.
+
+\subsubsection{Network failure}
+
+The API client attaches a Cognito access token and applies a ten-second request timeout. Home shows loading/offline feedback and provides a reconnect action; command failures are surfaced. Polling guards prevent overlapping requests. Reconnect retrieves current server state without starting a second server loop. These are HTTP failure/recovery paths, not WebSocket reconnection.
+
+\subsection{Performance Evaluation Specifications}
+
+\subsubsection{Functional checks}
+
+Checks cover observation isolation, seeded schedules, concentration updates, path validity, input/target timing, and mode/lifecycle behavior. Review-time execution passed 16 environment/formula/schedule and A* tests, including shortest-path comparison with breadth-first search. Full discovery did not pass: a legacy movement test failed and another stalled because it did not start the paused simulator. Physical-device Cognito registration/login, authenticated cloud controls, and reconnect behavior still require end-to-end evidence.
+
+\subsubsection{Policy comparison}
+
+The evaluation harness pairs fixed departures every 20 minutes with an AI policy under identical daily events, map, initial state, speed, measurement, and purification rules. Source/model hashes and scenario schedules identify each experiment. The current one-day comparison helper does not include all live backend multiday dwell/reinspection behavior, so it must not be described as identical to the current deployed policy without further alignment.
+
+\subsubsection{Reported results and limits}
+
+The current saved model's test MAE is 0.5707 \pmunit{}. A separate older nine-scenario evaluation recorded AI/fixed mean \pmfine{} of 11.5155/11.8004, room-minutes above 35 of 55.8889/54.6667, and travel distances of 40/899 cells. Lower mean and travel did not imply lower threshold duration. That evaluation's model/source hashes differ from the latest build; it is historical evidence, not a new result for the eight-feature, threshold-20 controller. New matched experiments are needed, and synthetic room-minutes do not establish human exposure or real-home effectiveness.
+
+\section{Architecture Design and Implementation}
+
+\subsection{Overall architecture}
+
+The proposed system consists of a mobile application, an authentication module, a backend server, an AI prediction module, an autonomous controller, a simulation engine, an air environment module, a pathfinding module, and a house map module.
+
+The mobile application is implemented using React Native, Expo, and TypeScript, and user authentication is handled through AWS Cognito. Authenticated users communicate with the backend server through HTTPS-based REST APIs.
+
+The backend system is deployed on Amazon EC2, where Nginx forwards external HTTPS requests to the FastAPI server. The backend server integrates the AI prediction model, autonomous controller, and simulation engine to manage the overall operation of the system. The AI prediction module uses a Random Forest model to predict the \pmfine{} concentration of each room 30 minutes in advance. The autonomous controller determines the destination by considering predicted concentrations and travel costs. The simulation engine performs movement, air quality measurement, and purification using the A*-based pathfinding module and the air environment module.
+
+Each module performs an independent role while being integrated through the backend server. This modular architecture facilitates the modification and extension of individual functions and improves system maintainability.
+
+\begin{figure}[!t]
+\centering
+\reportfigure{system-architecture}
+\caption{System architecture.}
+\label{fig:system-architecture}
+\end{figure}
+
+\subsection{Directory Organization}
+
+The project consists of four major source code directories:
+
+mobile, backend, simulation, and ai. Each directory contains source code and components corresponding to the modules defined in the overall system architecture.
+
+\begin{table}[!t]
+\caption{Repository Directory Organization}
+\label{tab:t3}
+\centering\footnotesize
+\setlength{\tabcolsep}{3pt}
+\setlength{\tablebodywidth}{\dimexpr\columnwidth-18pt\relax}
+\begin{tabular}{>{\raggedright\arraybackslash}p{0.300\tablebodywidth}>{\raggedright\arraybackslash}p{0.400\tablebodywidth}>{\raggedright\arraybackslash}p{0.300\tablebodywidth}}
+\toprule
+\textbf{Directory} & \textbf{Files} & \textbf{Modules} \\
+\midrule
+mobile/src/app/ & \_\allowbreak{}layout.tsx, login.tsx, signup.tsx & Mobile application, authentication \\
+mobile/src/app/(main)/ & index.tsx, explore.tsx & Mobile application \\
+mobile/\allowbreak{}src/\allowbreak{}components/\allowbreak{}airy/\allowbreak{} & floor-plan.tsx & Mobile application \\
+mobile/src/lib/ & auth-session.ts, simulation.ts & Authentication, API \\
+mobile/src/ & amplify-config.ts & Authentication \\
+mobile/assets/airy/ & Icons and fonts & Mobile application \\
+backend/ & main.py, auth.py & Backend, authentication \\
+simulation/ & simulator.py, environment.py, controller.py & Simulation, air environment, autonomous control \\
+simulation/ & pathfinding.py, house\_\allowbreak{}map.py, house\_\allowbreak{}map.json & Pathfinding, house map \\
+simulation/ & compare\_\allowbreak{}patrol.py & Policy evaluation \\
+ai/ & generate\_\allowbreak{}data.py, train\_\allowbreak{}model.py, predict.py, evaluate\_\allowbreak{}policies.py & Data generation, model training, prediction, and policy evaluation \\
+ai/data/ & Training, validation, and test datasets & Model training \\
+ai/artifacts/ & uniform20\_\allowbreak{}model.joblib & AI prediction \\
+docs/ & Project report files & Documentation \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Mobile Application Module \cite{ref7,ref8}}
+
+\subsubsection{Purpose and Functionality}
+
+The mobile application module provides an interface between users and the autonomous mobile air purification system. Users can monitor the current location and operating status of the air purifier, measured \pmfine{} concentrations, and future air quality predictions.
+
+Users can also switch between automatic and manual modes, select destinations for manual movement, and control the simulation by starting, pausing, or resetting it.
+
+The Home screen retrieves the system status every second while active, whereas the History screen retrieves operation history every five seconds while active. The application visualizes the current location and movement path of the air purifier using spatial information received from the backend server.
+
+\subsubsection{Source Code and Components}
+
+\begin{table}[!t]
+\caption{Mobile Application Components}
+\label{tab:t4}
+\centering\footnotesize
+\setlength{\tabcolsep}{3pt}
+\setlength{\tablebodywidth}{\dimexpr\columnwidth-18pt\relax}
+\begin{tabular}{>{\raggedright\arraybackslash}p{0.370\tablebodywidth}>{\raggedright\arraybackslash}p{0.200\tablebodywidth}>{\raggedright\arraybackslash}p{0.430\tablebodywidth}}
+\toprule
+\textbf{Component} & \textbf{Type} & \textbf{Functionality} \\
+\midrule
+RootLayout (\_\allowbreak{}layout.tsx) & React component & Manages screen navigation and access control. \\
+Home Screen (index.tsx) & Screen component & Provides air quality monitoring and system control. \\
+History Screen (explore.tsx) & Screen component & Displays operation history. \\
+FloorPlan (floor-plan.tsx) & React component & Visualizes the house map and movement paths. \\
+simulationRequest() (simulation.ts) & Function & Handles backend API communication. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{Origin and Implementation}
+
+\begin{table}[!t]
+\caption{Mobile Technology Choices}
+\label{tab:t5}
+\centering\footnotesize
+\setlength{\tabcolsep}{3pt}
+\setlength{\tablebodywidth}{\dimexpr\columnwidth-18pt\relax}
+\begin{tabular}{>{\raggedright\arraybackslash}p{0.333\tablebodywidth}>{\raggedright\arraybackslash}p{0.333\tablebodywidth}>{\raggedright\arraybackslash}p{0.333\tablebodywidth}}
+\toprule
+\textbf{Technology} & \textbf{Origin} & \textbf{Reason} \\
+\midrule
+React Native & Meta & Cross-platform mobile development \\
+Expo & Expo & Simplifies development and testing \\
+TypeScript & Microsoft & Static type checking \\
+Expo Router & Expo & Screen navigation and authentication-based access \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Existing frameworks provided by React Native and Expo were utilized, while the user interface, map visualization, system control, and API communication logic were specifically implemented for this project.
+
+The mobile application communicates with the FastAPI server through HTTPS-based REST APIs. HTTP polling was adopted to periodically update the system status without maintaining a persistent network connection.
+
+Technology sources: Official documentation of React Native, Expo, and TypeScript.
+
+\subsection{Authentication Module \cite{ref15,ref16}}
+
+\subsubsection{Purpose and Functionality}
+
+The authentication module manages user accounts and system access permissions. AWS Cognito provides user registration, email verification, sign-in, verification code resending, and sign-out functionality. After successful authentication, the mobile application includes a JWT access token in the Authorization header of each API request.
+
+The backend server uses Cognito's JSON Web Key Set (JWKS) to verify the RS256 signature, issuer, expiration time, token type, and client ID. Requests containing invalid tokens or missing authentication credentials receive an HTTP 401 response.
+
+\subsubsection{Source Code and Components}
+
+\begin{table}[!t]
+\caption{Authentication Components}
+\label{tab:t6}
+\centering\footnotesize
+\setlength{\tabcolsep}{3pt}
+\setlength{\tablebodywidth}{\dimexpr\columnwidth-18pt\relax}
+\begin{tabular}{>{\raggedright\arraybackslash}p{0.370\tablebodywidth}>{\raggedright\arraybackslash}p{0.200\tablebodywidth}>{\raggedright\arraybackslash}p{0.430\tablebodywidth}}
+\toprule
+\textbf{Component} & \textbf{Type} & \textbf{Functionality} \\
+\midrule
+LoginScreen (login.tsx) & React component & Handles user sign-in. \\
+SignUpScreen (signup.tsx) & React component & Handles registration and email verification. \\
+saveSession() (auth-session.ts) & Function & Stores authentication sessions. \\
+getAccessToken() (auth-session.ts) & Function & Retrieves access tokens. \\
+clearSession() (auth-session.ts) & Function & Clears authentication sessions. \\
+Cognito configuration (amplify-config.ts) & Configuration & Configures the Cognito User Pool. \\
+verify\_\allowbreak{}token() (auth.py) & Function & Verifies JWT access tokens. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{Origin and Implementation}
+
+AWS Cognito and AWS Amplify, provided by Amazon Web Services, were utilized for user authentication.
+
+AWS Cognito manages user accounts and issues authentication tokens, while AWS Amplify connects the mobile application to the Cognito User Pool.
+
+These technologies were selected to implement user authentication without developing a separate authentication server or password storage system. The authentication screens, session management, and backend token verification logic were specifically implemented for this project.
+
+Technology sources: Official documentation of Amazon Cognito and AWS Amplify.
+
+\subsubsection{Authentication and Authorization Flow}
+
+The authentication and authorization process is performed in the following order:
+
+1. The mobile application sends a sign-in request to AWS Cognito.
+
+2. AWS Cognito authenticates the user and returns an access token.
+
+3. The mobile application sends an API request containing the JWT access token to the FastAPI server.
+
+4. The backend retrieves the public keys from Cognito's JWKS when required.
+
+5. The backend verifies the access token using the public key and required token claims.
+
+6. If verification succeeds, the backend processes the request and returns an authorized response.
+
+\subsection{Backend Server Module \cite{ref9,ref18}}
+
+\subsubsection{Purpose and Functionality}
+
+The backend server module connects the mobile application, AI prediction model, autonomous controller, and simulation engine. It manages the overall execution of the system and processes requests from the mobile application.
+
+The server executes the simulation loop approximately once every second. When the simulation is running, each iteration advances the virtual time by 10 seconds by default.
+
+The backend server also manages operating modes, prediction results, autonomous movement decisions, and system status, and provides this information to the mobile application through REST APIs.
+
+\subsubsection{Source Code and Components}
+
+Source Code Location: backend/main.py
+
+\begin{table}[!t]
+\caption{Backend Server Components}
+\label{tab:t7}
+\centering\footnotesize
+\setlength{\tabcolsep}{3pt}
+\setlength{\tablebodywidth}{\dimexpr\columnwidth-18pt\relax}
+\begin{tabular}{>{\raggedright\arraybackslash}p{0.370\tablebodywidth}>{\raggedright\arraybackslash}p{0.200\tablebodywidth}>{\raggedright\arraybackslash}p{0.430\tablebodywidth}}
+\toprule
+\textbf{Component} & \textbf{Type} & \textbf{Functionality} \\
+\midrule
+lifespan() & Function & Manages the server lifecycle. \\
+simulation\_\allowbreak{}loop() & Function & Periodically executes the simulation. \\
+advance\_\allowbreak{}simulation() & Function & Advances virtual time and simulation state. \\
+auto\_\allowbreak{}decision() & Function & Manages autonomous operation and movement timing. \\
+status() & API handler & Returns system status and prediction results. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{API Implementation}
+
+\begin{table}[!t]
+\caption{Simulation API Endpoints}
+\label{tab:t8}
+\centering\footnotesize
+\setlength{\tabcolsep}{3pt}
+\setlength{\tablebodywidth}{\dimexpr\columnwidth-18pt\relax}
+\begin{tabular}{>{\raggedright\arraybackslash}p{0.180\tablebodywidth}>{\raggedright\arraybackslash}p{0.240\tablebodywidth}>{\raggedright\arraybackslash}p{0.580\tablebodywidth}}
+\toprule
+\textbf{Method} & \textbf{Endpoint} & \textbf{Functionality} \\
+\midrule
+GET & /status & Retrieves the current system status. \\
+GET & /map & Retrieves the virtual household map. \\
+GET & /history & Retrieves the current day's operation history. \\
+GET & /predict & Performs AI prediction. \\
+POST & /mode & Changes the operating mode. \\
+POST & /move & Sets a manual movement destination. \\
+POST & /start & Starts the simulation. \\
+POST & /pause & Pauses the simulation. \\
+POST & /reset & Resets the simulation. \\
+POST & /step & Advances the running simulation. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{Origin and Implementation}
+
+FastAPI, an open-source Python-based web framework, was used to implement the backend server. FastAPI facilitates REST API development and allows direct integration with Python-based AI and simulation modules.
+
+Uvicorn was used as the ASGI server to run the FastAPI application.
+
+The API endpoints, simulation management, module integration, and operating mode control logic were specifically implemented for this project.
+
+The current server maintains a single instance of Simulator and Predictor, meaning that authenticated users share the same simulation environment. Simulation states and operation history are currently managed in server memory, while SQLite-based persistent data storage is under development.
+
+Technology sources: Official documentation of FastAPI and Uvicorn.
+
+\subsection{AI Prediction Module \cite{ref6,ref13}}
+
+\subsubsection{Purpose and Functionality}
+
+The AI prediction module predicts the \pmfine{} concentration of each room 30 minutes in advance using historical air quality measurements and temporal information. The prediction results are used to determine autonomous movement destinations, allowing the air purifier to proactively respond to anticipated pollution events.
+
+\subsubsection{Source Code and Components}
+
+\begin{table}[!t]
+\caption{AI Prediction Components}
+\label{tab:t9}
+\centering\footnotesize
+\setlength{\tabcolsep}{3pt}
+\setlength{\tablebodywidth}{\dimexpr\columnwidth-18pt\relax}
+\begin{tabular}{>{\raggedright\arraybackslash}p{0.370\tablebodywidth}>{\raggedright\arraybackslash}p{0.200\tablebodywidth}>{\raggedright\arraybackslash}p{0.430\tablebodywidth}}
+\toprule
+\textbf{Component} & \textbf{Type} & \textbf{Functionality} \\
+\midrule
+generate() (generate\_\allowbreak{}data.py) & Function & Generates the complete dataset. \\
+generate\_\allowbreak{}home() (generate\_\allowbreak{}data.py) & Function & Generates synthetic household data. \\
+make\_\allowbreak{}model() (train\_\allowbreak{}model.py) & Function & Configures the machine learning model. \\
+main() (train\_\allowbreak{}model.py) & Function & Trains, validates, and saves the model. \\
+Predictor (predict.py) & Class & Loads the model and manages predictions. \\
+predict\_\allowbreak{}from\_\allowbreak{}simulator() (predict.py) & Method & Predicts using simulation measurements. \\
+uniform20\_\allowbreak{}model.joblib & Model artifact & Stores the trained model. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{Data Generation and Training}
+
+Six virtual household environments with different daily activity schedules were configured. Sixty days of simulation data were generated for each household.
+
+Each household consists of a living room, kitchen, and bedroom, and air quality data are recorded at 10-minute intervals. The complete ground-truth dataset contains 155,520 records, while the dataset satisfying the prediction requirements contains a total of 148,752 samples.
+
+\begin{table}[!t]
+\caption{Chronological Dataset Split}
+\label{tab:t10}
+\centering\footnotesize
+\setlength{\tabcolsep}{3pt}
+\setlength{\tablebodywidth}{\dimexpr\columnwidth-24pt\relax}
+\begin{tabular}{>{\raggedright\arraybackslash}p{0.230\tablebodywidth}>{\raggedright\arraybackslash}p{0.310\tablebodywidth}>{\raggedright\arraybackslash}p{0.250\tablebodywidth}>{\raggedright\arraybackslash}p{0.210\tablebodywidth}}
+\toprule
+\textbf{Dataset} & \textbf{Days per household} & \textbf{Samples} & \textbf{Share} \\
+\midrule
+Training & 42 & 104,148 & 70\% \\
+Validation & 9 & 22,284 & 15\% \\
+Testing & 9 & 22,320 & 15\% \\
+Total & 60 & 148,752 & 100\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The datasets were divided chronologically to prevent temporal data leakage. The training target is the ground-truth \pmfine{} concentration of the corresponding room 30 minutes after the reference time.
+
+\subsubsection{Input Features and Model Configuration}
+
+The AI prediction model uses the following eight input features.
+
+\begin{table}[!t]
+\caption{Prediction Input Features}
+\label{tab:t11}
+\centering\footnotesize
+\setlength{\tabcolsep}{3pt}
+\setlength{\tablebodywidth}{\dimexpr\columnwidth-12pt\relax}
+\begin{tabular}{>{\raggedright\arraybackslash}p{0.470\tablebodywidth}>{\raggedright\arraybackslash}p{0.530\tablebodywidth}}
+\toprule
+\textbf{Feature} & \textbf{Description} \\
+\midrule
+room\_\allowbreak{}id & Room identifier \\
+hour & Current hour \\
+minute & Current minute \\
+last\_\allowbreak{}measured\_\allowbreak{}pm25 & Most recent measured \pmfine{} \\
+minutes\_\allowbreak{}since\_\allowbreak{}measurement & Elapsed minutes since the last measurement \\
+days\_\allowbreak{}observed & Number of previously observed days \\
+historical\_\allowbreak{}mean & Mean of historical daily peaks \\
+polluted\_\allowbreak{}day\_\allowbreak{}ratio & Fraction of observed days at or above the pollution threshold \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Historical measurement information is obtained from up to 14 previous days of observation records. Historical summary features are generated using measurements within a 15-minute window before and after the corresponding prediction target time.
+
+Room identifiers are transformed using OneHotEncoder, and the preprocessing procedure and RandomForestRegressor are combined into a single machine learning pipeline.
+
+\begin{table}[!t]
+\caption{Random Forest Configuration}
+\label{tab:t12}
+\centering\footnotesize
+\setlength{\tabcolsep}{3pt}
+\setlength{\tablebodywidth}{\dimexpr\columnwidth-12pt\relax}
+\begin{tabular}{>{\raggedright\arraybackslash}p{0.500\tablebodywidth}>{\raggedright\arraybackslash}p{0.500\tablebodywidth}}
+\toprule
+\textbf{Parameter} & \textbf{Value} \\
+\midrule
+Model & RandomForestRegressor \\
+Number of trees & 120 \\
+Minimum samples per leaf & 3 \\
+Random seed & 42 \\
+Maximum depth & None \\
+Prediction horizon & 30 min \\
+Validation metric & MAE \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+A model with a maximum depth of eight and a model without a depth restriction were compared. The final model was selected based on the Mean Absolute Error (MAE) of the validation dataset.
+
+\subsubsection{Runtime Prediction}
+
+The trained model is saved as a Joblib file and loaded when the backend server starts.
+
+The server performs predictions at 10-minute boundaries in virtual time. During runtime, predictions are generated using measurement records collected when the air purifier visits each room.
+
+Hidden ground-truth concentrations of unvisited rooms and future pollution schedules are not used as prediction inputs.
+
+When initial observations are insufficient or valid prediction conditions are not satisfied, the module returns the corresponding prediction status instead of numerical prediction results.
+
+\subsubsection{AI Model Training and Prediction Pipeline}
+
+The AI model training and prediction pipeline consists of two major stages: offline model training and runtime prediction.
+
+\emph{(a) Offline Model Training}
+
+Synthetic Data Generation (6 Households \ensuremath{\times} 60 Days) \ensuremath{\rightarrow} Feature Engineering and Target Generation \ensuremath{\rightarrow} Chronological Dataset Splitting \ensuremath{\rightarrow} Random Forest Training and Model Selection \ensuremath{\rightarrow} Trained Model (.joblib)
+
+\emph{(b) Runtime Prediction}
+
+Runtime Air Quality Observations \ensuremath{\rightarrow} Feature Extraction \ensuremath{\rightarrow} Predictor \ensuremath{\rightarrow} 30-minute \pmfine{} Forecast \ensuremath{\rightarrow} Autonomous Controller
+
+\subsubsection{Origin and Implementation}
+
+The RandomForestRegressor provided by Scikit-learn was utilized for air quality prediction. Random Forest is an ensemble learning algorithm that combines multiple decision trees and can learn nonlinear relationships between various input features.
+
+Random Forest was selected because it is suitable for the structured air quality data used in this project and can perform training and prediction with relatively limited computational resources.
+
+The existing Random Forest algorithm and preprocessing libraries were utilized, while synthetic data generation, feature engineering, the model training pipeline, and runtime prediction logic were specifically implemented for this project. Technology sources: Official Scikit-learn documentation and L. Breiman's Random Forests (2001).
+
+\subsection{Autonomous Controller Module}
+
+\subsubsection{Purpose and Functionality}
+
+The autonomous controller module determines the destination of the air purifier by considering predicted \pmfine{} concentrations and travel costs.
+
+After collecting initial observations from each room through an initial patrol, the controller utilizes prediction results generated at 10-minute boundaries in virtual time.
+
+When valid prediction results are available and the air purifier is not moving, rooms with predicted \pmfine{} concentrations of 20 \pmunit{} or higher are considered potential movement destinations.
+
+\subsubsection{Source Code and Components}
+
+\begin{table}[!t]
+\caption{Autonomous Controller Components}
+\label{tab:t13}
+\centering\footnotesize
+\setlength{\tabcolsep}{3pt}
+\setlength{\tablebodywidth}{\dimexpr\columnwidth-18pt\relax}
+\begin{tabular}{>{\raggedright\arraybackslash}p{0.370\tablebodywidth}>{\raggedright\arraybackslash}p{0.200\tablebodywidth}>{\raggedright\arraybackslash}p{0.430\tablebodywidth}}
+\toprule
+\textbf{Component} & \textbf{Type} & \textbf{Functionality} \\
+\midrule
+choose\_\allowbreak{}destination() (controller.py) & Function & Selects destinations and determines movement actions. \\
+decide\_\allowbreak{}and\_\allowbreak{}move() (controller.py) & Function & Selects destinations and establishes movement paths. \\
+auto\_\allowbreak{}decision() (main.py) & Function & Manages autonomous operation and movement timing. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{Destination Selection Algorithm}
+
+The priority score of each room is calculated using the following equation:
+
+\begin{equation}
+\operatorname{Score}_i=\widehat{C}_i-\lambda T_i
+\end{equation}
+
+\begin{table}[!t]
+\caption{Destination Score Variables}
+\label{tab:t14}
+\centering\footnotesize
+\setlength{\tabcolsep}{3pt}
+\setlength{\tablebodywidth}{\dimexpr\columnwidth-12pt\relax}
+\begin{tabular}{>{\raggedright\arraybackslash}p{0.250\tablebodywidth}>{\raggedright\arraybackslash}p{0.750\tablebodywidth}}
+\toprule
+\textbf{Variable} & \textbf{Description} \\
+\midrule
+$\widehat{C}_i$ & Predicted \pmfine{} concentration of room i \\
+$T_i$ & Estimated travel time to room i in minutes \\
+$\lambda$ & Travel cost weight \\
+$\operatorname{Score}_i$ & Movement priority score of room i \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The travel cost weight currently used by the backend server is set to 1.
+
+The controller compares the scores of reachable rooms. When two rooms have the same score, the room with the shorter travel time is prioritized.
+
+Based on the calculated scores and the operating status of the air purifier, the controller determines whether to move to another room (Move), remain in the current room (Stay), or wait (Wait).
+
+To prevent frequent destination changes, additional autonomous movement is restricted for 10 virtual minutes after arrival. Under certain conditions, the controller also revisits rooms to update outdated measurement records.
+
+\subsubsection{Autonomous Decision-Making Flow}
+
+The simplified autonomous decision-making process is as follows:
+
+1. Perform an initial patrol and collect air quality measurements from each room.
+
+2. Predict the \pmfine{} concentration of each room 30 minutes in advance.
+
+3. Check whether valid predictions and movement conditions are satisfied.
+
+4. If the conditions are not satisfied, wait and reassess the conditions.
+
+5. If the conditions are satisfied, evaluate reachable rooms and their travel costs.
+
+6. Calculate the movement priority score of each candidate room.
+
+7. Determine the appropriate action: Move, Stay, or Wait.
+
+\subsubsection{Origin and Implementation}
+
+The autonomous control algorithm is a rule-based decision-making algorithm specifically designed and implemented for this project.
+
+Unlike a simple approach that moves the air purifier to the room with the highest pollution concentration, the proposed algorithm considers both predicted future concentrations and travel costs to reduce unnecessary movement.
+
+By separating AI prediction and movement decision-making into independent modules, movement policies and travel cost weights can be adjusted without modifying the prediction model. Technology source: Custom design and implementation.
+
+\subsection{Simulation Engine Module}
+
+\subsubsection{Purpose and Functionality}
+
+The simulation engine module reproduces the operation of an autonomous mobile air purifier in a virtual household environment without requiring physical hardware.
+
+It manages virtual time, the current location of the air purifier, movement paths, air quality measurements, purification states, and operation history.
+
+The air purifier measures air quality at its initial location and upon arrival at a destination. If the air purifier remains in the same room without obtaining a new measurement, it performs another measurement after 10 virtual minutes.
+
+Purification begins when the measured \pmfine{} concentration reaches or exceeds 20 \pmunit{} and stops when the concentration decreases to 15 \pmunit{} or below. Between these two thresholds, the existing purification state is maintained. Purification is not performed while the air purifier is moving.
+
+\subsubsection{Source Code and Components}
+
+Source Code Location: simulation/simulator.py
+
+\begin{table}[!t]
+\caption{Simulation Engine Components}
+\label{tab:t15}
+\centering\footnotesize
+\setlength{\tabcolsep}{3pt}
+\setlength{\tablebodywidth}{\dimexpr\columnwidth-18pt\relax}
+\begin{tabular}{>{\raggedright\arraybackslash}p{0.370\tablebodywidth}>{\raggedright\arraybackslash}p{0.200\tablebodywidth}>{\raggedright\arraybackslash}p{0.430\tablebodywidth}}
+\toprule
+\textbf{Component} & \textbf{Type} & \textbf{Functionality} \\
+\midrule
+Simulator & Class & Manages the overall simulation state. \\
+move\_\allowbreak{}to() & Method & Sets the destination and movement path. \\
+step() & Method & Advances virtual time and movement. \\
+next\_\allowbreak{}day() & Method & Transitions to the next virtual day. \\
+reset() & Method & Resets the simulation and observation history. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{Simulation State Management}
+
+The operation of the air purifier can be represented using the following four conceptual states.
+
+\begin{table}[!t]
+\caption{Simulation States}
+\label{tab:t16}
+\centering\footnotesize
+\setlength{\tabcolsep}{3pt}
+\setlength{\tablebodywidth}{\dimexpr\columnwidth-12pt\relax}
+\begin{tabular}{>{\raggedright\arraybackslash}p{0.260\tablebodywidth}>{\raggedright\arraybackslash}p{0.740\tablebodywidth}}
+\toprule
+\textbf{State} & \textbf{Description} \\
+\midrule
+Idle & Remains stationary without movement or purification. \\
+Moving & Travels along the designated path. \\
+Measuring & Measures air quality in the current room. \\
+Purifying & Purifies air based on the measured concentration. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Movement is simulated in 10-second virtual time increments, while the air quality environment is updated every virtual minute.
+
+Upon arrival at a destination, the air purifier measures the air quality and determines whether purification is required based on the measured concentration. Measurements are performed immediately, and the measuring status displayed in the mobile application indicates that a measurement has recently been performed.
+
+When a simulation day ends, the system transitions to the next virtual day. Historical measurement records are retained, while the daily environment and operating states are initialized.
+
+\subsubsection{Simulation State Transitions}
+
+The main operational state transitions are described below.
+
+\begin{table}[!t]
+\caption{Simulation State Transitions}
+\label{tab:t17}
+\centering\footnotesize
+\setlength{\tabcolsep}{3pt}
+\setlength{\tablebodywidth}{\dimexpr\columnwidth-18pt\relax}
+\begin{tabular}{>{\raggedright\arraybackslash}p{0.240\tablebodywidth}>{\raggedright\arraybackslash}p{0.520\tablebodywidth}>{\raggedright\arraybackslash}p{0.240\tablebodywidth}}
+\toprule
+\textbf{Current state} & \textbf{Transition condition} & \textbf{Next state} \\
+\midrule
+Idle & A movement destination is selected & Moving \\
+Moving & Arrival at destination & Measuring \\
+Measuring & \pmfine{} at least 20 \pmunit{} & Purifying \\
+Measuring & \pmfine{} below the start threshold and purification inactive & Idle \\
+Purifying & \pmfine{} at most 15 \pmunit{} & Idle \\
+Purifying & New movement initiated & Moving \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{Origin and Implementation}
+
+The simulation engine was specifically designed and implemented for this project using Python.
+
+A discrete-time simulation approach was adopted to reproduce the movement, air quality measurement, and purification processes of the air purifier without requiring physical sensors or hardware.
+
+This approach allows experiments to be repeated under identical environmental conditions and provides a controlled virtual environment for demonstrating and evaluating the proposed autonomous operation policy.
+
+Technology source: Python-based custom design and implementation.
+
+\subsection{Air Environment Module}
+
+\subsubsection{Purpose and Functionality}
+
+The air environment module reproduces changes in air quality within the virtual household environment. It considers pollution generated by daily activities such as cooking, cleaning, and bedding arrangement, as well as natural pollution decay and the purification effects of the air purifier.
+
+The ground-truth \pmfine{} concentration of each room is updated every virtual minute.
+
+The air purifier can only measure the concentration of the room in which it is currently located. Ground-truth concentrations of unvisited rooms are not directly provided to the AI prediction model during runtime.
+
+\subsubsection{Source Code and Components}
+
+Source Code Location: simulation/environment.py
+
+\begin{table}[!t]
+\caption{Air Environment Components}
+\label{tab:t18}
+\centering\footnotesize
+\setlength{\tabcolsep}{3pt}
+\setlength{\tablebodywidth}{\dimexpr\columnwidth-18pt\relax}
+\begin{tabular}{>{\raggedright\arraybackslash}p{0.370\tablebodywidth}>{\raggedright\arraybackslash}p{0.200\tablebodywidth}>{\raggedright\arraybackslash}p{0.430\tablebodywidth}}
+\toprule
+\textbf{Component} & \textbf{Type} & \textbf{Functionality} \\
+\midrule
+PollutionEvent & Class & Defines activity-related pollution events. \\
+AirEnvironment & Class & Manages room air quality. \\
+advance() & Method & Applies pollution emissions, natural decay, and purification. \\
+sample\_\allowbreak{}current\_\allowbreak{}room() & Method & Measures air quality in the current room. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{Air Quality Update Model}
+
+The initial \pmfine{} concentration of each room is set to 10 \pmunit{}. Air quality is updated in the following order: pollution emission, natural decay, and purification.
+
+\begin{table}[!t]
+\caption{Simulated Activity Emissions}
+\label{tab:t19}
+\centering\footnotesize
+\setlength{\tabcolsep}{3pt}
+\setlength{\tablebodywidth}{\dimexpr\columnwidth-18pt\relax}
+\begin{tabular}{>{\raggedright\arraybackslash}p{0.333\tablebodywidth}>{\raggedright\arraybackslash}p{0.333\tablebodywidth}>{\raggedright\arraybackslash}p{0.333\tablebodywidth}}
+\toprule
+\textbf{Activity} & \textbf{Room} & \textbf{Increase per minute} \\
+\midrule
+Cooking & Kitchen & +3 \pmunit{} \\
+Cleaning & Living room & +2 \pmunit{} \\
+Bedding arrangement & Bedroom & +2 \pmunit{} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\emph{(a) Pollution Emission}
+
+The pollution generated by daily activities is added to the previous \pmfine{} concentration.
+
+\begin{equation}
+U=C+E
+\end{equation}
+
+\emph{(b) Natural Decay}
+
+The portion of the \pmfine{} concentration exceeding 10 \pmunit{} naturally decreases by 1\% per minute.
+
+\begin{equation}
+N=U-0.01\max(U-10,0)
+\end{equation}
+
+\emph{(c) Purification Effect}
+
+When purification is performed, the \pmfine{} concentration decreases according to the actual purification duration.
+
+\begin{equation}
+C_{\mathrm{next}}=\begin{cases}\max\{5, N\cdot 0.95^{s/60}\},&s>0,\\ N,&s=0.\end{cases}
+\end{equation}
+
+\begin{table}[!t]
+\caption{Air Quality Update Variables}
+\label{tab:t20}
+\centering\footnotesize
+\setlength{\tabcolsep}{3pt}
+\setlength{\tablebodywidth}{\dimexpr\columnwidth-12pt\relax}
+\begin{tabular}{>{\raggedright\arraybackslash}p{0.350\tablebodywidth}>{\raggedright\arraybackslash}p{0.650\tablebodywidth}}
+\toprule
+\textbf{Variable} & \textbf{Description} \\
+\midrule
+C & Previous \pmfine{} concentration \\
+E & Pollution increase during one minute \\
+U & Concentration after emission \\
+N & Concentration after natural decay \\
+s & Seconds of purification during the minute \\
+Updated concentration & Concentration after all updates \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The purification effect is adjusted according to the actual purification duration. When purification is applied, the minimum concentration is set to 5 \pmunit{}.
+
+\subsubsection{Air Quality Update Process}
+
+The air quality update process follows the sequence below.
+
+Previous \pmfine{} Concentration \ensuremath{\rightarrow} Pollution Emission \ensuremath{\rightarrow} Natural Decay \ensuremath{\rightarrow} Purification Effect \ensuremath{\rightarrow} Updated \pmfine{} Concentration This process is repeated every virtual minute for each room.
+
+\subsubsection{Origin and Implementation}
+
+The air environment model was specifically designed and implemented for this project using Python.
+
+It was designed to reproduce various indoor pollution scenarios without requiring physical air quality sensors. The module is also utilized for generating AI training data and evaluating autonomous purification policies.
+
+The pollution emission rates, natural decay rate, and purification rate are experimental parameters defined to reproduce air quality changes in a virtual environment. These values do not represent experimentally verified physical performance measurements of an actual air purifier. Pollution diffusion between rooms and additional random background noise are not currently modeled.
+
+Technology source: Custom design and implementation.
+
+\subsection{Pathfinding Module \cite{ref12}}
+
+\subsubsection{Purpose and Functionality}
+
+The pathfinding module calculates a movement path from the current location of the air purifier to its destination while avoiding obstacles.
+
+The household environment is represented as a two-dimensional grid. The A* algorithm searches for a path using four-directional movement and the Manhattan distance heuristic.
+
+The calculated path is returned as an ordered sequence of coordinates, and the simulation engine moves the air purifier along this path. If no valid path exists, an exception is raised.
+
+\subsubsection{Source Code and Components}
+
+Source Code Location: simulation/pathfinding.py
+
+\begin{table}[!t]
+\caption{Pathfinding Components}
+\label{tab:t21}
+\centering\footnotesize
+\setlength{\tabcolsep}{3pt}
+\setlength{\tablebodywidth}{\dimexpr\columnwidth-18pt\relax}
+\begin{tabular}{>{\raggedright\arraybackslash}p{0.370\tablebodywidth}>{\raggedright\arraybackslash}p{0.200\tablebodywidth}>{\raggedright\arraybackslash}p{0.430\tablebodywidth}}
+\toprule
+\textbf{Component} & \textbf{Type} & \textbf{Functionality} \\
+\midrule
+find\_\allowbreak{}path() & Function & Calculates movement paths using A*. \\
+NoPathError & Exception class & Handles unreachable destinations. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{Pathfinding Algorithm}
+
+The A* algorithm uses the following evaluation function:
+
+\begin{equation}
+f(n)=g(n)+h(n)
+\end{equation}
+
+\begin{table}[!t]
+\caption{Pathfinding Cost Terms}
+\label{tab:t22}
+\centering\footnotesize
+\setlength{\tabcolsep}{3pt}
+\setlength{\tablebodywidth}{\dimexpr\columnwidth-12pt\relax}
+\begin{tabular}{>{\raggedright\arraybackslash}p{0.220\tablebodywidth}>{\raggedright\arraybackslash}p{0.780\tablebodywidth}}
+\toprule
+\textbf{Variable} & \textbf{Description} \\
+\midrule
+g(n) & Actual movement cost from start to the current node \\
+h(n) & Estimated cost from the current node to the destination \\
+f(n) & Estimated total movement cost \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The Manhattan distance is used as the heuristic function.
+
+\begin{equation}
+h(n)=|x_n-x_g|+|y_n-y_g|
+\end{equation}
+
+Here, ( xn, yn) represents the coordinates of the current node, while ( xg, yg) represents the coordinates of the destination.
+
+All walkable adjacent grid cells have equal movement costs, while grid cells containing walls or obstacles are excluded from the search.
+
+\subsubsection{Origin and Implementation}
+
+The pathfinding module was implemented based on the existing A* pathfinding algorithm and adapted to the grid-based household environment of this project.
+
+A* was selected because it is suitable for fixed two-dimensional grid environments and can efficiently calculate shortest paths using predefined movement conditions and a heuristic function.
+
+In this project, the pathfinding module utilizes walkable areas and adjacent coordinate information provided by the house map module to calculate movement paths.
+
+The current implementation is based on fixed obstacles and does not include real-time dynamic obstacle detection or map updating functionality.
+
+Technology source: P. E. Hart, N. J. Nilsson, and B. Raphael \cite{ref12}. A Formal Basis for the Heuristic Determination of Minimum
+
+\subsection{House Map Module}
+
+\subsubsection{Purpose and Functionality}
+
+The house map module manages the spatial structure and coordinate information of the virtual household environment.
+
+The virtual household consists of a living room, kitchen, and bedroom and is represented as a 15 \ensuremath{\times} 11 two-dimensional grid. The map defines walkable areas, obstacles, room boundaries, the initial position, and destination coordinates.
+
+This information is utilized for pathfinding, room identification, air purifier movement, and map visualization in the mobile application.
+
+\subsubsection{Source Code and Components}
+
+\begin{table}[!t]
+\caption{House Map Components}
+\label{tab:t23}
+\centering\footnotesize
+\setlength{\tabcolsep}{3pt}
+\setlength{\tablebodywidth}{\dimexpr\columnwidth-18pt\relax}
+\begin{tabular}{>{\raggedright\arraybackslash}p{0.370\tablebodywidth}>{\raggedright\arraybackslash}p{0.200\tablebodywidth}>{\raggedright\arraybackslash}p{0.430\tablebodywidth}}
+\toprule
+\textbf{Component} & \textbf{Type} & \textbf{Functionality} \\
+\midrule
+house\_\allowbreak{}map.json & Data file & Defines the grid, room boundaries, and destinations. \\
+HouseMap (house\_\allowbreak{}map.py) & Class & Loads and manages the virtual household map. \\
+Room (house\_\allowbreak{}map.py) & Class & Manages room boundaries and destinations. \\
+contains() & Method & Checks whether a coordinate is inside a room. \\
+is\_\allowbreak{}walkable() & Method & Checks whether a coordinate is walkable. \\
+neighbors() & Method & Retrieves adjacent walkable coordinates. \\
+room\_\allowbreak{}at() & Method & Identifies the room at a coordinate. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{Origin and Implementation}
+
+The virtual household map was specifically designed for this project, and spatial information is stored in JSON format.
+
+Separating map data from simulation logic improves maintainability and allows the household structure to be modified without requiring significant changes to the pathfinding or simulation code.
+
+The backend server provides the same map data to the mobile application to ensure consistency between the simulation coordinates and the positions displayed in the application.
+
+Technology source: JSON-based custom design and implementation.
+
+\subsection{Cloud Infrastructure and Deployment \cite{ref14,ref17,ref18,ref19,ref20}}
+
+\subsubsection{Purpose and Functionality}
+
+The cloud infrastructure and deployment components provide a remotely accessible server environment for the autonomous mobile air purification system.
+
+The backend server, AI prediction model, autonomous controller, and simulation engine run on an Amazon EC2 instance. This allows the mobile application to communicate with the backend server even when they are not connected to the same local network.
+
+Nginx operates as a reverse proxy and forwards external HTTPS requests to the FastAPI application running through Uvicorn on local port 8000.
+
+DuckDNS provides a domain name associated with the server's IP address, while Certbot is used to obtain and configure TLS certificates. The backend server process is managed through systemd.
+
+\subsubsection{Infrastructure Components}
+
+\begin{table}[!t]
+\caption{Cloud Infrastructure Components}
+\label{tab:t24}
+\centering\footnotesize
+\setlength{\tabcolsep}{3pt}
+\setlength{\tablebodywidth}{\dimexpr\columnwidth-18pt\relax}
+\begin{tabular}{>{\raggedright\arraybackslash}p{0.250\tablebodywidth}>{\raggedright\arraybackslash}p{0.300\tablebodywidth}>{\raggedright\arraybackslash}p{0.450\tablebodywidth}}
+\toprule
+\textbf{Technology} & \textbf{Type} & \textbf{Functionality} \\
+\midrule
+Amazon EC2 & Cloud service & Hosts the backend server. \\
+Nginx & Reverse proxy & Forwards HTTPS requests to the internal server. \\
+Uvicorn & ASGI server & Runs the FastAPI application. \\
+systemd & Service manager & Manages process startup and execution. \\
+DuckDNS & DNS service & Provides domain name resolution. \\
+Certbot & Certificate management & Obtains and configures TLS certificates. \\
+HTTPS/TLS & Protocol & Encrypts network communication. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+These infrastructure components are configured at the server environment and external service levels rather than being implemented as separate application source code modules or classes.
+
+\subsubsection{Cloud Communication Architecture}
+
+The mobile application resolves the server's IP address through the DuckDNS domain name and sends HTTPS requests to the backend server.
+
+Nginx processes incoming HTTPS requests on port 443 and forwards them through local HTTP communication to the FastAPI application running on port 8000.
+
+FastAPI verifies the JWT access token included in each request and performs system monitoring or control operations for authenticated requests.
+
+The overall cloud communication process is described below.
+
+\emph{(a) Domain Name Resolution}
+
+Mobile Application \ensuremath{\rightarrow} DNS Resolution through DuckDNS \ensuremath{\rightarrow} EC2 Server IP Address
+
+\emph{(b) External Network Communication}
+
+Mobile Application \ensuremath{\rightarrow} HTTPS Request (Port 443) with JWT \ensuremath{\rightarrow} Nginx Reverse Proxy
+
+\emph{(c) Internal Server Communication}
+
+Nginx \ensuremath{\rightarrow} Local HTTP (Port 8000) \ensuremath{\rightarrow} Uvicorn / FastAPI \ensuremath{\rightarrow} AI Prediction Module, Autonomous Controller, and Simulation Engine
+
+\emph{(d) Server Management and Security}
+
+systemd manages the backend server process and automatic startup, while Certbot provides TLS certificate management for secure HTTPS communication.
+
+\subsubsection{Origin and Implementation}
+
+Amazon EC2, provided by Amazon Web Services, was utilized to establish a computing environment capable of remotely executing the Python-based backend system.
+
+Nginx and Uvicorn were used to handle external network communication and application execution, respectively.
+
+systemd was adopted to manage the backend server process as a system service. DuckDNS and Certbot were utilized to establish domain-based HTTPS communication without requiring the purchase of a separate commercial domain name.
+
+Existing cloud services and open-source software were utilized, while server deployment, infrastructure configuration, and integration between these technologies were specifically performed for this project.
+
+Technology sources: Official documentation of Amazon EC2, Nginx, Uvicorn, systemd, DuckDNS, and Certbot.
+
+\section{Use Cases}
+
+\subsection{Sign In and Open the Dashboards}
+
+\begin{figure}[!t]
+\centering
+\reportfigure{airy-sign-in}
+\caption{Airy sign-in screen.}
+\label{fig:airy-sign-in}
+\end{figure}
+
+After opening Airy, the user enters their demo account credentials and selects Sign In. MY Home displays the virtual apartment, the purifier's position, and the simulation controls. If sign-in fails, the app displays an error on the same screen. Sign Out returns the user to the login screen (Sections II-A and IV-B).
+
+\subsection{Start, Pause, Resume, and Reset a Run}
+
+\begin{figure}[!t]
+\centering
+\reportfigure{simulation-controls}
+\caption{Simulation clock and controls while the run is paused.}
+\label{fig:simulation-controls}
+\end{figure}
+
+On the dashboard, Start advances the virtual clock and starts the simulation. Pause stops the clock and the purifier's movement. Selecting Start again resumes the same run. Reset returns the purifier to its starting position in the living room, resets the clock to 00:00:00, clears the displayed forecasts, and selects Auto Mode (Sections II-B and IV-B).
+
+\subsection{Observe an AI Forecast and Automatic Movement}
+
+\begin{figure}[!t]
+\centering
+\reportfigure{automatic-movement}
+\caption{Room-level \pmfine{} forecasts and the selected destination during automatic movement.}
+\label{fig:automatic-movement}
+\end{figure}
+
+In Auto Mode, the purifier first measures each room. The user then checks the latest \pmfine{} reading, the time since it was taken, and the 30-minute forecast in Room Air Quality. If the controller selects another room, the app shows the destination and decision reason, and the user can follow the purifier on the floor plan. The controller considers reachable rooms with forecasts of at least 20 \pmunit{} and accounts for travel time. When it has no destination and is idle, it may visit a room with an old reading. After arrival, the purifier takes a fresh measurement. It starts purification at a measured \pmfine{} of 20 \pmunit{} or higher and stops when a new reading is 15 \pmunit{} or lower, or when it leaves the room (Sections II-C through II-E and IV-C through IV-E).
+
+\subsection{Send the Purifier to a Room in Manual Mode}
+
+\begin{figure}[!t]
+\centering
+\reportfigure{manual-movement}
+\caption{Kitchen selected as the destination in Manual Mode.}
+\label{fig:manual-movement}
+\end{figure}
+
+The user can select Manual Mode to send the purifier to a specific room. If it is already moving, the user waits for the active route to finish and the room buttons to become available. Selecting Kitchen, for example, sends the purifier to the kitchen and updates the measurement when it arrives. Selecting Auto Mode returns destination selection to the controller (Sections II-B and IV-B).
+
+\subsection{Review Activity in the History Screen}
+
+\begin{figure}[!t]
+\centering
+\reportfigure{airy-history}
+\caption{Recent movement and measurement events in My History.}
+\label{fig:airy-history}
+\end{figure}
+
+After the purifier has moved and measured the air, the user opens History to review the activity. My History shows recent movement, measurement, and purification events in reverse chronological order, with their virtual times and rooms where applicable. The user can return to MY Home to see the current state (Sections II-F and IV-F).
+
+\begin{thebibliography}{00}
+\bibitem{ref1} LG Electronics, ``LG PuriCare AI Objet Collection 360\textdegree{} Air Purifier M7,'' model AS356NSMAM, official product information. [Online]. Available: \url{https://www.lge.co.kr/product/air-purifier/as356nsmam}
+
+\bibitem{ref2} LG Electronics, ``LG PuriCare AI+ Air Purifier with AI Air-Quality Sensing,'' LG Electronics Newsroom, Jan. 22, 2025. [Online]. Available: \url{https://www.lge.co.kr/story/newsroom/229218}
+
+\bibitem{ref3} LG Electronics, ``LG Electronics Launches AI Air Purifier M7 with an Advanced Filter,'' LG Electronics Newsroom, Jan. 30, 2026 (Korean). [Online]. Available: \url{https://www.lge.co.kr/story/newsroom/235386}
+
+\bibitem{ref4} ECOVACS ROBOTICS, ``How do I use linked purification?'', ECOVACS Global Support, updated Aug. 30, 2022. [Online]. Available: \url{https://help.ecovacs.com/global/support/faq-detail?id=465}
+
+\bibitem{ref5} Python Software Foundation, Python Documentation. [Online]. Available: \url{https://docs.python.org/3/}
+
+\bibitem{ref6} scikit-learn Developers, scikit-learn Documentation. [Online]. Available: \url{https://scikit-learn.org/}
+
+\bibitem{ref7} Meta, React Native Documentation. [Online]. Available: \url{https://reactnative.dev/}
+
+\bibitem{ref8} Expo, Expo Documentation. [Online]. Available: \url{https://docs.expo.dev/}
+
+\bibitem{ref9} FastAPI, FastAPI Documentation. [Online]. Available: \url{https://fastapi.tiangolo.com/}
+
+\bibitem{ref10} SQLite, SQLite Documentation. [Online]. Available: \url{https://www.sqlite.org/docs.html}
+
+\bibitem{ref11} Anthropic, Claude Code Documentation. [Online]. Available: \url{https://code.claude.com/docs/}
+
+\bibitem{ref12} P. E. Hart, N. J. Nilsson, and B. Raphael, ``A Formal Basis for the Heuristic Determination of Minimum Cost Paths,'' IEEE Transactions on Systems Science and Cybernetics, 1968.
+
+\bibitem{ref13} L. Breiman, ``Random Forests,'' Machine Learning, 2001.
+
+\bibitem{ref14} Amazon EC2 Documentation [Online]. Available: \url{https://docs.aws.amazon.com/ec2/}
+
+\bibitem{ref15} Amazon Cognito Documentation. [Online]. Available: \url{https://docs.aws.amazon.com/cognito/}
+
+\bibitem{ref16} Amazon Amplify Documentation. [Online]. Available: \url{https://docs.amplify.aws/}
+
+\bibitem{ref17} Nginx Documentation. [Online]. Available: \url{https://nginx.org/en/docs/}
+
+\bibitem{ref18} Uvicorn Documentation. [Online]. Available: \url{https://www.uvicorn.org/}
+
+\bibitem{ref19} DuckDNS Documentation. [Online]. Available: \url{https://www.duckdns.org/}
+
+\bibitem{ref20} Certbot Documentation. [Online]. Available: \url{https://certbot.eff.org/}
+\end{thebibliography}
+
+\end{document}
