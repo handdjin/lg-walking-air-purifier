@@ -17,8 +17,11 @@ export function FloorPlan({ map, state }: { map: HouseMap; state: SimulatorState
   const cellWidth = width / Math.max(1, map.width - 2);
   const cellHeight = height / Math.max(1, map.height - 2);
   const point = ([x, y]: number[]) => ({ left: (x - 0.5) * cellWidth, top: (y - 0.5) * cellHeight });
-  const target = state.remaining_steps > 0 ? map.rooms.find(room => room.id === state.destination)?.target : undefined;
-  const path = state.is_running && state.mode === 'auto' ? [state.position, ...(state.remaining_path ?? [])] : [];
+  const returning = state.device_state === 'returning';
+  const target = state.remaining_steps === 0 ? undefined
+    : returning ? state.dock : map.rooms.find(room => room.id === state.destination)?.target;
+  const path = state.is_running && (state.mode === 'auto' || returning) ? [state.position, ...(state.remaining_path ?? [])] : [];
+  const dock = map.dock ?? state.dock;
   const tiles = map.grid.flatMap((row, y) => Array.from(row, (tile, x) => ({ tile, x, y })));
   const tileAt = (x: number, y: number) => map.grid[y]?.[x];
 
@@ -78,6 +81,7 @@ export function FloorPlan({ map, state }: { map: HouseMap; state: SimulatorState
               }]} />;
             });
           })}
+          {dock && <View style={[styles.dock, point(dock)]} />}
           {target && <View style={[styles.destination, point(target)]}>
             <Image source={destinationRing} style={{ width: 18, height: 18 }} />
             <Image source={destinationCenter} style={styles.destinationCenter} />
@@ -92,6 +96,7 @@ export function FloorPlan({ map, state }: { map: HouseMap; state: SimulatorState
         <Copy size={10} bold color={colors.blue}>● Purifier</Copy>
         <Copy size={10} bold color={colors.red}>◎ Destination</Copy>
         <Copy size={10} color={colors.muted}>▬ Obstacle</Copy>
+        <Copy size={10} bold color={colors.green}>■ Dock</Copy>
       </View>
       <Copy size={10} color={colors.muted}>Openings &amp; arcs indicate doors.</Copy>
     </Card>
@@ -112,5 +117,6 @@ const styles = StyleSheet.create({
   purifier: { position: 'absolute', marginLeft: -19, marginTop: -19 },
   purifierCenter: { position: 'absolute', top: 8, left: 8, width: 22, height: 22 },
   destination: { position: 'absolute', marginLeft: -9, marginTop: -9 },
+  dock: { position: 'absolute', marginLeft: -7, marginTop: -7, width: 14, height: 14, borderRadius: 3, backgroundColor: colors.green, opacity: 0.7 },
   destinationCenter: { position: 'absolute', top: 5, left: 5, width: 8, height: 8 },
 });

@@ -40,12 +40,18 @@ function ConnectionCard({ loading, reconnect }: { loading: boolean; reconnect: (
 function DeviceStatus({ state }: { state: SimulatorState }) {
   const status = state.finished ? 'Finished'
     : !state.is_running ? 'Paused'
+    : state.device_state === 'stopped' ? 'Stopped'
+    : state.device_state === 'docked' ? 'Docked'
+    : state.device_state === 'returning' ? 'Returning'
     : state.status === 'moving' ? 'Moving'
     : state.is_measuring ? 'Measuring'
     : state.is_purifying ? 'Purifying' : 'Idle';
-  const tint = { Finished: colors.muted, Paused: colors.gold, Moving: colors.blue, Measuring: colors.purple, Purifying: colors.green, Idle: colors.muted }[status];
-  const dot = status === 'Moving' ? require('@/assets/airy/StatusDotHome.svg')
-    : status === 'Paused' ? require('@/assets/airy/StatusDotManual.svg') : undefined;
+  const tint = {
+    Finished: colors.muted, Paused: colors.gold, Stopped: colors.gold, Docked: colors.muted,
+    Returning: colors.blue, Moving: colors.blue, Measuring: colors.purple, Purifying: colors.green, Idle: colors.muted,
+  }[status];
+  const dot = status === 'Moving' || status === 'Returning' ? require('@/assets/airy/StatusDotHome.svg')
+    : status === 'Paused' || status === 'Stopped' ? require('@/assets/airy/StatusDotManual.svg') : undefined;
   return <Card>
     <View style={layout.row}>
       <Copy size={16} bold>Device Status</Copy>
@@ -57,7 +63,7 @@ function DeviceStatus({ state }: { state: SimulatorState }) {
     <View style={layout.columns}>
       <View style={layout.column}>
         <Copy size={10} color={colors.muted}>Current Location</Copy>
-        <Copy size={14} bold>{roomName(state.current_room)}</Copy>
+        <Copy size={14} bold>{state.device_state === 'docked' ? 'Charging Dock' : roomName(state.current_room)}</Copy>
       </View>
       <View style={layout.column}>
         <Copy size={10} color={colors.muted}>Simulation Time</Copy>
@@ -98,6 +104,9 @@ type Command = (endpoint: string, body?: object) => void;
 function Operations({ map, state, busy, command }: { map: HouseMap; state: SimulatorState; busy: boolean; command: Command }) {
   const manual = state.mode === 'manual';
   const pending = state.mode !== state.active_mode;
+  // Servers without device controls omit device_state; treat them as running.
+  const device = state.device_state ?? 'running';
+  const operating = device === 'running' || device === 'returning';
   return <Card>
     <Copy size={16} bold>Operation Mode</Copy>
     <View style={styles.modeSelector}>
@@ -118,20 +127,29 @@ function Operations({ map, state, busy, command }: { map: HouseMap; state: Simul
       {map.rooms.map(room => <Button key={room.id} compact label={roomName(room.id, room.name)}
         selected={manual && state.destination === room.id}
         variant={manual && state.destination === room.id ? 'primary' : 'secondary'}
-        disabled={busy || state.finished || !manual || pending}
+        disabled={busy || state.finished || !manual || pending || !operating}
         onPress={() => command('move', { target_room: room.id })} />)}
     </View>
     <Copy size={11} color={colors.muted}>
       {pending ? 'Waiting for the current route to finish.'
         : !manual ? 'Destination selection is disabled in Auto Mode.'
+        : !operating ? 'Start Airy to choose a destination.'
         : state.destination ? `Selected Destination · ${roomName(state.destination)}` : 'No destination selected.'}
     </Copy>
-    <Copy bold>Simulation Controls</Copy>
+    <Copy bold>Device Controls</Copy>
     <View style={layout.columns}>
-      <Button compact label="Start" disabled={busy || state.is_running || state.finished} onPress={() => command('start')} />
-      <Button compact label="Pause" disabled={busy || !state.is_running} onPress={() => command('pause')} />
-      <Button compact label="Reset" variant="secondary" disabled={busy} onPress={() => command('reset')} />
+      <Button compact label={operating ? 'Stop' : 'Start'} disabled={busy || state.finished}
+        onPress={() => command(operating ? 'device/stop' : 'device/start')} />
+      <Button compact label="Return to Dock" variant="secondary"
+        disabled={busy || state.finished || device === 'docked' || device === 'returning'}
+        onPress={() => command('device/dock')} />
     </View>
+    <Copy size={11} color={colors.muted}>
+      {state.device_state === 'stopped' ? 'Airy is stopped. Air quality keeps changing.'
+        : state.device_state === 'returning' ? 'Airy is returning to the charging dock.'
+        : state.device_state === 'docked' ? 'Airy is waiting at the charging dock. Press Start to resume.'
+        : 'Stop pauses movement and purification. Return to Dock sends Airy to its charger.'}
+    </Copy>
   </Card>;
 }
 
@@ -246,7 +264,8 @@ export default function HomeScreen() {
             <Copy size={10} color={colors.muted}>Selected Destination</Copy>
             <Copy size={20} bold color={colors.red}>{roomName(manual ? state.destination : decision?.target_room, '—')}</Copy>
             <Copy size={10} color={colors.muted}>Decision Reason</Copy>
-            <Copy size={12}>{manual ? 'Manual Mode is active. Choose a destination below.'
+            <Copy size={12}>{(state.device_state ?? 'running') !== 'running' ? 'AI decisions resume when Airy is running.'
+              : manual ? 'Manual Mode is active. Choose a destination below.'
               : decision ? reasons[decision.reason] ?? decision.reason.replaceAll('_', ' ')
               : 'Waiting for measurements and an AI decision.'}</Copy>
           </Card>

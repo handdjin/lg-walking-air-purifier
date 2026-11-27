@@ -23,8 +23,9 @@ export async function simulationRequest<T>(
 }
 
 export type Room = { id: string; name: string; bounds: number[]; target: number[] };
-export type HouseMap = { width: number; height: number; grid: string[]; rooms: Room[] };
+export type HouseMap = { width: number; height: number; grid: string[]; rooms: Room[]; dock?: number[] };
 export type Mode = 'auto' | 'manual';
+export type DeviceState = 'running' | 'stopped' | 'returning' | 'docked';
 export type SimulatorState = {
   mode: Mode;
   active_mode: Mode;
@@ -32,6 +33,8 @@ export type SimulatorState = {
   position: number[];
   destination: string | null;
   status: string;
+  device_state: DeviceState;
+  dock: number[];
   remaining_steps: number;
   remaining_path?: number[][];
   simulation_time_seconds: number;
