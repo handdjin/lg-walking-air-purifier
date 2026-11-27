@@ -129,9 +129,12 @@ Scan the QR code to open the project in Expo Go, then sign in with a provisioned
 | `GET` | `/history` | Get recorded movement, measurement, purification, and simulation events. |
 | `POST` | `/mode` | Select Auto or Manual Mode. |
 | `POST` | `/move` | Request a destination in Manual Mode. |
-| `POST` | `/start` | Start or resume the simulation. |
-| `POST` | `/pause` | Pause the simulation. |
-| `POST` | `/reset` | Reset the simulation, event history, and AI state. |
+| `POST` | `/device/start` | Start the purifier, or resume it after a stop or from the dock. |
+| `POST` | `/device/stop` | Stop moving, measuring, and purifying. Time and pollution keep changing. |
+| `POST` | `/device/dock` | Return the purifier to its charging dock, where it waits until started. |
+| `POST` | `/start` | Start or resume the simulation clock (demo setup and testing). |
+| `POST` | `/pause` | Pause the simulation clock (demo setup and testing). |
+| `POST` | `/reset` | Reset the simulation, event history, and AI state, leaving the clock paused (demo setup and testing). |
 | `POST` | `/step` | Advance the simulation by one step for testing while it is running. |
 
 **Example mode selection request (`POST /mode`)**
@@ -158,7 +161,7 @@ Supported rooms:
 - `kitchen`
 - `bedroom`
 
-The EC2 backend advances the running simulation automatically, and the mobile app polls for updates.
+The simulation clock starts when the backend starts, and the EC2 backend advances it automatically. The mobile app polls for updates and shows only the device controls. After `/reset`, call `/start` to run the clock again.
 
 ---
 
@@ -188,7 +191,7 @@ The EC2 backend advances the running simulation automatically, and the mobile ap
 - Cognito sign-in and Figma-based Home and History screens.
 - Live floor plan showing the purifier's position, destination, and route when available.
 - Device status, simulation time, measured and forecast PM2.5, and AI destination decisions.
-- Auto and Manual modes, manual destination selection, and start, pause, and reset controls.
+- Auto and Manual modes, manual destination selection, and device controls to start or stop Airy and return it to the charging dock.
 - Loading and connection failure states with a reconnect action.
 - Activity history showing movement, measurement, and purification events.
 
@@ -196,6 +199,7 @@ The EC2 backend advances the running simulation automatically, and the mobile ap
 
 - FastAPI runs a shared simulation and serves state, forecasts, and history through REST APIs. The mobile app polls for updates.
 - A mode change requested during movement takes effect after the active route finishes.
+- Automatic decisions run only while the device is running. A stopped or docked purifier stays in place while time and pollution continue.
 - The backend stores simulation state, event history, and AI results in memory. A reset or server restart clears the previous run's history.
 
 ### 9.5 Future Development

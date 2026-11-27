@@ -200,9 +200,9 @@ sim.start_operation()       # Leaves the dock and measures the living room
 
 ### Backend integration
 
-- Make automatic decisions (`initial_patrol()` and `auto_decision()` in `backend/main.py`) only when `device_state == "running"`. `AutoModePolicy` in `compare_patrol.py` already follows this rule.
-- Expose `stop_operation()`, `start_operation()`, and `return_to_dock()` as device endpoints. Keep `/start`, `/pause`, and `/reset` for the simulation clock and run.
-- Without an app start button, start the simulation clock when the server starts.
+- `backend/main.py` exposes the device controls as `POST /device/start`, `/device/stop`, and `/device/dock`. `/start`, `/pause`, and `/reset` remain for the simulation clock and run.
+- `initial_patrol()` and `auto_decision()` act only when `device_state == "running"`, matching `AutoModePolicy` in `compare_patrol.py`. Keep the two in sync.
+- The backend starts the simulation clock when the server starts because the app has no clock controls.
 
 ## Shared air quality calculations
 

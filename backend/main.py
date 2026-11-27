@@ -46,8 +46,8 @@ def initial_patrol():
     """Visit rooms that have not been measured."""
     state = simulator.get_state()
 
-    # Preserve an existing route.
-    if state["remaining_steps"] > 0:
+    # Preserve an existing route. Stopped, returning, or docked devices stay put.
+    if state["remaining_steps"] > 0 or state["device_state"] != "running":
         return
 
     for room in ["living_room", "kitchen", "bedroom"]:
@@ -79,12 +79,13 @@ def auto_decision():
         last_prediction_seconds = seconds
         latest_decision = None
         if (active_mode == "auto" and latest_prediction["status"] == "ok"
-                and not state["remaining_steps"]):
+                and not state["remaining_steps"] and state["device_state"] == "running"):
             latest_decision = choose_destination(
                 simulator, latest_prediction["predictions"], threshold=20)
             store.save_decision(latest_decision, key=f"forecast:{seconds}")
 
     if (active_mode != "auto" or not latest_decision or state["remaining_steps"]
+            or state["device_state"] != "running"
             or latest_decision["decided_at_seconds"] != seconds - seconds % 600):
         return
     arrival = simulator.last_arrival_seconds
@@ -156,7 +157,11 @@ async def simulation_loop():
 async def lifespan(app: FastAPI):
     # Exactly one backend worker owns the shared in-memory simulation.
     RunRecorder.recover_open_runs()
-    ensure_recorder()
+    store = ensure_recorder()
+    # The app has device controls only, so the simulation clock runs from server start.
+    # /start, /pause, and /reset remain for demo setup and testing.
+    simulator.start()
+    store.sync(source="system")
     task = asyncio.create_task(simulation_loop())
 
     try:
@@ -302,6 +307,38 @@ async def pause():
     simulator.pause()
     store.sync(source="manual")
     return status()
+
+
+def device_command(action):
+    """Run a device control. Time and pollution keep changing in every device state."""
+    global latest_decision
+    store = ensure_recorder()
+    try:
+        action()
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error))
+    if simulator.get_state()["device_state"] != "running":
+        latest_decision = None  # No automatic decision applies while stopped or docked
+    store.sync(source="manual")
+    return status()
+
+
+@app.post("/device/start")
+async def start_device():
+    """Resume after a stop or leave the dock."""
+    return device_command(simulator.start_operation)
+
+
+@app.post("/device/stop")
+async def stop_device():
+    """Stop moving, measuring, and purifying in place."""
+    return device_command(simulator.stop_operation)
+
+
+@app.post("/device/dock")
+async def return_device_to_dock():
+    """Return to the charging dock and wait there."""
+    return device_command(simulator.return_to_dock)
 
 
 @app.get("/predict")
