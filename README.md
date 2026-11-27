@@ -8,7 +8,7 @@
 
 This project aims to develop a software-based simulation of an autonomous mobile air purifier that predicts future indoor air pollution and proactively moves to areas requiring air purification.
 
-The system combines a virtual home, A* pathfinding, a Random Forest model, a FastAPI backend, and the LG Airy mobile app. The purifier uses forecasts to select destinations in Auto Mode and uses measured PM2.5 to determine whether to purify the air.
+The system combines a virtual home, D* Lite pathfinding, a Random Forest model, a FastAPI backend, and the LG Airy mobile app. The purifier uses forecasts to select destinations in Auto Mode and uses measured PM2.5 to determine whether to purify the air.
 
 This project was developed as part of the Software Engineering course in the Department of Information Systems at Hanyang University, in collaboration with LG Electronics.
 
@@ -21,7 +21,7 @@ This project was developed as part of the Software Engineering course in the Dep
 | Backend | Python, FastAPI, Uvicorn |
 | Machine Learning | scikit-learn (Random Forest) |
 | Data Processing | Pandas, NumPy |
-| Pathfinding | A* Algorithm |
+| Pathfinding | D* Lite Algorithm |
 | Database | SQLite |
 | Real-Time Communication | HTTP Polling (WebSocket planned) |
 | UI/UX Design | Figma |
@@ -45,7 +45,7 @@ lg-walking-air-purifier/
 │   └── main.py                   # FastAPI endpoints and simulation loop
 ├── simulation/
 │   ├── house_map.json             # Virtual home layout
-│   ├── pathfinding.py            # A* navigation
+│   ├── pathfinding.py            # D* Lite navigation
 │   ├── simulator.py              # Movement, measurement, and purification
 │   └── controller.py             # AI destination selection
 ├── mobile/
@@ -168,7 +168,7 @@ The EC2 backend advances the running simulation automatically, and the mobile ap
 
 - 2D grid-based home environment with three rooms.
 - Defined walls, doors, obstacles, and walkable cells.
-- A* pathfinding for autonomous navigation.
+- D* Lite pathfinding for autonomous navigation, with incremental replanning support.
 - Time-based indoor air pollution simulation.
 - Automatic initial patrol and room-based air quality measurement.
 - Air purification logic based on measured PM2.5 levels.
@@ -176,12 +176,12 @@ The EC2 backend advances the running simulation automatically, and the mobile ap
 
 ### 9.2 AI Prediction and Decision-Making
 
-- Generation of 60 days of virtual indoor air quality data.
-- Random Forest model for 30-minute PM2.5 prediction.
-- Prediction based on time, room information, previous measurements, and measurement age.
-- Forecast evaluation at 10-minute simulation boundaries.
-- In Auto Mode, the controller selects a destination based on predicted pollution and travel time when forecasts are available and the purifier has no active route.
-- The AI policy and fixed patrol were compared across nine paired synthetic scenarios. The AI policy traveled less and slightly lowered mean PM2.5, while spending more time above the experimental threshold. [Policy evaluation report](ai/policy_evaluation_report.md)
+- Synthetic dataset of six home schedules × 60 virtual days, generated with the app's simulator. [Data rules](ai/air_quality_rules.md)
+- Random Forest model that predicts each room's PM2.5 30 minutes ahead from time, room, the latest reading and its age, and up to 14 days of measurement history.
+- Test MAE of 0.571 µg/m³, compared with 1.397 for repeating the last measurement.
+- Forecasts at 10-minute simulation boundaries after all rooms have been measured that day.
+- In Auto Mode, the purifier moves to the room with the best predicted-PM-minus-travel-time score and revisits rooms whose readings become stale.
+- The results and limitations of comparing Auto Mode with a 20-minute fixed patrol over nine consecutive synthetic days are in the [policy evaluation report](ai/policy_evaluation_report.md).
 
 ### 9.3 Mobile Application
 

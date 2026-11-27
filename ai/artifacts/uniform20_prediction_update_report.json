@@ -2,13 +2,11 @@
   "result": "PASS",
   "scope": "Controlled simulator/backend verification; not a real-phone or accuracy test",
   "checks": [
-    "arrival measurement",
     "latest measured values",
     "fractional measurement age",
     "periodic measurement updates",
     "hidden-state exclusion",
     "status payload",
-    "gradual purification",
     "periodic replanning"
   ],
   "records": [
@@ -20,21 +18,30 @@
           "hour": 8,
           "minute": 40,
           "last_measured_pm25": 10.0,
-          "minutes_since_measurement": 0.0
+          "minutes_since_measurement": 0.0,
+          "days_observed": 0,
+          "historical_mean": -1,
+          "polluted_day_ratio": -1
         },
         {
           "room_id": "kitchen",
           "hour": 8,
           "minute": 40,
           "last_measured_pm25": 10.0,
-          "minutes_since_measurement": 10.0
+          "minutes_since_measurement": 10.0,
+          "days_observed": 0,
+          "historical_mean": -1,
+          "polluted_day_ratio": -1
         },
         {
           "room_id": "bedroom",
           "hour": 8,
           "minute": 40,
           "last_measured_pm25": 10.0,
-          "minutes_since_measurement": 5.0
+          "minutes_since_measurement": 5.0,
+          "days_observed": 0,
+          "historical_mean": -1,
+          "polluted_day_ratio": -1
         }
       ],
       "observations": {
@@ -62,42 +69,42 @@
         "target_minute": 550,
         "status": "ok",
         "predictions": {
-          "living_room": 10.0,
-          "kitchen": 47.189095123630544,
-          "bedroom": 15.030704245063212
+          "living_room": 10.071951629494995,
+          "kitchen": 10.543001373692938,
+          "bedroom": 10.103508529793613
         }
       },
       "decision": {
-        "action": "move",
-        "target_room": "kitchen",
-        "reason": "highest_score",
+        "action": "wait",
+        "target_room": null,
+        "reason": "all_predictions_below_threshold",
         "decided_at_seconds": 31200,
         "prediction_horizon_minutes": 30,
-        "threshold": 35.0,
+        "threshold": 20,
         "travel_weight": 1.0,
         "rooms": {
           "bedroom": {
-            "predicted_pm25": 15.030704245063212,
+            "predicted_pm25": 10.103508529793613,
             "reachable": true,
             "travel_steps": 13,
             "travel_seconds": 130,
-            "score": 12.864037578396546,
+            "score": 7.936841863126947,
             "eligible": false
           },
           "kitchen": {
-            "predicted_pm25": 47.189095123630544,
+            "predicted_pm25": 10.543001373692938,
             "reachable": true,
             "travel_steps": 10,
             "travel_seconds": 100,
-            "score": 45.52242845696388,
-            "eligible": true
+            "score": 8.876334707026272,
+            "eligible": false
           },
           "living_room": {
-            "predicted_pm25": 10.0,
+            "predicted_pm25": 10.071951629494995,
             "reachable": true,
             "travel_steps": 0,
             "travel_seconds": 0,
-            "score": 10.0,
+            "score": 10.071951629494995,
             "eligible": false
           }
         }
@@ -111,35 +118,44 @@
           "hour": 8,
           "minute": 50,
           "last_measured_pm25": 10.0,
-          "minutes_since_measurement": 10.0
+          "minutes_since_measurement": 0.0,
+          "days_observed": 0,
+          "historical_mean": -1,
+          "polluted_day_ratio": -1
         },
         {
           "room_id": "kitchen",
           "hour": 8,
           "minute": 50,
           "last_measured_pm25": 10.0,
-          "minutes_since_measurement": 8.333333333333371
+          "minutes_since_measurement": 20.0,
+          "days_observed": 0,
+          "historical_mean": -1,
+          "polluted_day_ratio": -1
         },
         {
           "room_id": "bedroom",
           "hour": 8,
           "minute": 50,
           "last_measured_pm25": 10.0,
-          "minutes_since_measurement": 15.0
+          "minutes_since_measurement": 15.0,
+          "days_observed": 0,
+          "historical_mean": -1,
+          "polluted_day_ratio": -1
         }
       ],
       "observations": {
         "living_room": {
           "pm25": 10.0,
-          "measured_at_seconds": 31200,
-          "source_minute": 520,
-          "age_seconds": 600
+          "measured_at_seconds": 31800,
+          "source_minute": 530,
+          "age_seconds": 0
         },
         "kitchen": {
           "pm25": 10.0,
-          "measured_at_seconds": 31300,
-          "source_minute": 521,
-          "age_seconds": 500
+          "measured_at_seconds": 30600,
+          "source_minute": 510,
+          "age_seconds": 1200
         },
         "bedroom": {
           "pm25": 10.0,
@@ -153,42 +169,42 @@
         "target_minute": 560,
         "status": "ok",
         "predictions": {
-          "living_room": 10.0,
-          "kitchen": 36.83965541590147,
-          "bedroom": 14.581041915259043
+          "living_room": 10.143329834691816,
+          "kitchen": 11.355618755295444,
+          "bedroom": 10.05260305272976
         }
       },
       "decision": {
-        "action": "stay",
-        "target_room": "kitchen",
-        "reason": "current_room_selected",
+        "action": "wait",
+        "target_room": null,
+        "reason": "all_predictions_below_threshold",
         "decided_at_seconds": 31800,
         "prediction_horizon_minutes": 30,
-        "threshold": 35.0,
+        "threshold": 20,
         "travel_weight": 1.0,
         "rooms": {
           "bedroom": {
-            "predicted_pm25": 14.581041915259043,
+            "predicted_pm25": 10.05260305272976,
             "reachable": true,
-            "travel_steps": 15,
-            "travel_seconds": 150,
-            "score": 12.081041915259043,
+            "travel_steps": 13,
+            "travel_seconds": 130,
+            "score": 7.8859363860630936,
             "eligible": false
           },
           "kitchen": {
-            "predicted_pm25": 36.83965541590147,
-            "reachable": true,
-            "travel_steps": 0,
-            "travel_seconds": 0,
-            "score": 36.83965541590147,
-            "eligible": true
-          },
-          "living_room": {
-            "predicted_pm25": 10.0,
+            "predicted_pm25": 11.355618755295444,
             "reachable": true,
             "travel_steps": 10,
             "travel_seconds": 100,
-            "score": 8.333333333333334,
+            "score": 9.688952088628778,
+            "eligible": false
+          },
+          "living_room": {
+            "predicted_pm25": 10.143329834691816,
+            "reachable": true,
+            "travel_steps": 0,
+            "travel_seconds": 0,
+            "score": 10.143329834691816,
             "eligible": false
           }
         }
@@ -202,35 +218,44 @@
           "hour": 9,
           "minute": 0,
           "last_measured_pm25": 10.0,
-          "minutes_since_measurement": 20.0
+          "minutes_since_measurement": 0.0,
+          "days_observed": 0,
+          "historical_mean": -1,
+          "polluted_day_ratio": -1
         },
         {
           "room_id": "kitchen",
           "hour": 9,
           "minute": 0,
           "last_measured_pm25": 10.0,
-          "minutes_since_measurement": 8.333333333333371
+          "minutes_since_measurement": 30.0,
+          "days_observed": 0,
+          "historical_mean": -1,
+          "polluted_day_ratio": -1
         },
         {
           "room_id": "bedroom",
           "hour": 9,
           "minute": 0,
           "last_measured_pm25": 10.0,
-          "minutes_since_measurement": 25.0
+          "minutes_since_measurement": 25.0,
+          "days_observed": 0,
+          "historical_mean": -1,
+          "polluted_day_ratio": -1
         }
       ],
       "observations": {
         "living_room": {
           "pm25": 10.0,
-          "measured_at_seconds": 31200,
-          "source_minute": 520,
-          "age_seconds": 1200
+          "measured_at_seconds": 32400,
+          "source_minute": 540,
+          "age_seconds": 0
         },
         "kitchen": {
           "pm25": 10.0,
-          "measured_at_seconds": 31900,
-          "source_minute": 531,
-          "age_seconds": 500
+          "measured_at_seconds": 30600,
+          "source_minute": 510,
+          "age_seconds": 1800
         },
         "bedroom": {
           "pm25": 10.0,
@@ -244,9 +269,9 @@
         "target_minute": 570,
         "status": "ok",
         "predictions": {
-          "living_room": 10.0,
-          "kitchen": 27.16747818541101,
-          "bedroom": 16.165525925207337
+          "living_room": 10.087370413588708,
+          "kitchen": 14.0921885818665,
+          "bedroom": 10.019728280276059
         }
       },
       "decision": {
@@ -255,31 +280,31 @@
         "reason": "all_predictions_below_threshold",
         "decided_at_seconds": 32400,
         "prediction_horizon_minutes": 30,
-        "threshold": 35.0,
+        "threshold": 20,
         "travel_weight": 1.0,
         "rooms": {
           "bedroom": {
-            "predicted_pm25": 16.165525925207337,
+            "predicted_pm25": 10.019728280276059,
             "reachable": true,
-            "travel_steps": 15,
-            "travel_seconds": 150,
-            "score": 13.665525925207337,
+            "travel_steps": 13,
+            "travel_seconds": 130,
+            "score": 7.853061613609393,
             "eligible": false
           },
           "kitchen": {
-            "predicted_pm25": 27.16747818541101,
-            "reachable": true,
-            "travel_steps": 0,
-            "travel_seconds": 0,
-            "score": 27.16747818541101,
-            "eligible": false
-          },
-          "living_room": {
-            "predicted_pm25": 10.0,
+            "predicted_pm25": 14.0921885818665,
             "reachable": true,
             "travel_steps": 10,
             "travel_seconds": 100,
-            "score": 8.333333333333334,
+            "score": 12.425521915199834,
+            "eligible": false
+          },
+          "living_room": {
+            "predicted_pm25": 10.087370413588708,
+            "reachable": true,
+            "travel_steps": 0,
+            "travel_seconds": 0,
+            "score": 10.087370413588708,
             "eligible": false
           }
         }
@@ -293,35 +318,44 @@
           "hour": 9,
           "minute": 10,
           "last_measured_pm25": 10.0,
-          "minutes_since_measurement": 30.0
+          "minutes_since_measurement": 0.0,
+          "days_observed": 0,
+          "historical_mean": -1,
+          "polluted_day_ratio": -1
         },
         {
           "room_id": "kitchen",
           "hour": 9,
           "minute": 10,
-          "last_measured_pm25": 12.97,
-          "minutes_since_measurement": 8.333333333333371
+          "last_measured_pm25": 10.0,
+          "minutes_since_measurement": 40.0,
+          "days_observed": 0,
+          "historical_mean": -1,
+          "polluted_day_ratio": -1
         },
         {
           "room_id": "bedroom",
           "hour": 9,
           "minute": 10,
           "last_measured_pm25": 10.0,
-          "minutes_since_measurement": 35.0
+          "minutes_since_measurement": 35.0,
+          "days_observed": 0,
+          "historical_mean": -1,
+          "polluted_day_ratio": -1
         }
       ],
       "observations": {
         "living_room": {
           "pm25": 10.0,
-          "measured_at_seconds": 31200,
-          "source_minute": 520,
-          "age_seconds": 1800
+          "measured_at_seconds": 33000,
+          "source_minute": 550,
+          "age_seconds": 0
         },
         "kitchen": {
-          "pm25": 12.97,
-          "measured_at_seconds": 32500,
-          "source_minute": 541,
-          "age_seconds": 500
+          "pm25": 10.0,
+          "measured_at_seconds": 30600,
+          "source_minute": 510,
+          "age_seconds": 2400
         },
         "bedroom": {
           "pm25": 10.0,
@@ -335,9 +369,9 @@
         "target_minute": 580,
         "status": "ok",
         "predictions": {
-          "living_room": 10.0,
-          "kitchen": 20.6211465506417,
-          "bedroom": 17.686756475221554
+          "living_room": 10.047483920428647,
+          "kitchen": 12.012287458313228,
+          "bedroom": 10.016042300901006
         }
       },
       "decision": {
@@ -346,31 +380,31 @@
         "reason": "all_predictions_below_threshold",
         "decided_at_seconds": 33000,
         "prediction_horizon_minutes": 30,
-        "threshold": 35.0,
+        "threshold": 20,
         "travel_weight": 1.0,
         "rooms": {
           "bedroom": {
-            "predicted_pm25": 17.686756475221554,
+            "predicted_pm25": 10.016042300901006,
             "reachable": true,
-            "travel_steps": 15,
-            "travel_seconds": 150,
-            "score": 15.186756475221554,
+            "travel_steps": 13,
+            "travel_seconds": 130,
+            "score": 7.84937563423434,
             "eligible": false
           },
           "kitchen": {
-            "predicted_pm25": 20.6211465506417,
-            "reachable": true,
-            "travel_steps": 0,
-            "travel_seconds": 0,
-            "score": 20.6211465506417,
-            "eligible": false
-          },
-          "living_room": {
-            "predicted_pm25": 10.0,
+            "predicted_pm25": 12.012287458313228,
             "reachable": true,
             "travel_steps": 10,
             "travel_seconds": 100,
-            "score": 8.333333333333334,
+            "score": 10.345620791646562,
+            "eligible": false
+          },
+          "living_room": {
+            "predicted_pm25": 10.047483920428647,
+            "reachable": true,
+            "travel_steps": 0,
+            "travel_seconds": 0,
+            "score": 10.047483920428647,
             "eligible": false
           }
         }
@@ -384,35 +418,44 @@
           "hour": 9,
           "minute": 20,
           "last_measured_pm25": 10.0,
-          "minutes_since_measurement": 40.0
+          "minutes_since_measurement": 0.0,
+          "days_observed": 0,
+          "historical_mean": -1,
+          "polluted_day_ratio": -1
         },
         {
           "room_id": "kitchen",
           "hour": 9,
           "minute": 20,
-          "last_measured_pm25": 38.11453848516121,
-          "minutes_since_measurement": 8.333333333333371
+          "last_measured_pm25": 10.0,
+          "minutes_since_measurement": 50.0,
+          "days_observed": 0,
+          "historical_mean": -1,
+          "polluted_day_ratio": -1
         },
         {
           "room_id": "bedroom",
           "hour": 9,
           "minute": 20,
           "last_measured_pm25": 10.0,
-          "minutes_since_measurement": 45.0
+          "minutes_since_measurement": 45.0,
+          "days_observed": 0,
+          "historical_mean": -1,
+          "polluted_day_ratio": -1
         }
       ],
       "observations": {
         "living_room": {
           "pm25": 10.0,
-          "measured_at_seconds": 31200,
-          "source_minute": 520,
-          "age_seconds": 2400
+          "measured_at_seconds": 33600,
+          "source_minute": 560,
+          "age_seconds": 0
         },
         "kitchen": {
-          "pm25": 38.11453848516121,
-          "measured_at_seconds": 33100,
-          "source_minute": 551,
-          "age_seconds": 500
+          "pm25": 10.0,
+          "measured_at_seconds": 30600,
+          "source_minute": 510,
+          "age_seconds": 3000
         },
         "bedroom": {
           "pm25": 10.0,
@@ -426,9 +469,9 @@
         "target_minute": 590,
         "status": "ok",
         "predictions": {
-          "living_room": 10.0,
-          "kitchen": 19.199057640865664,
-          "bedroom": 20.02298509728096
+          "living_room": 10.000000000046493,
+          "kitchen": 12.032031548835006,
+          "bedroom": 10.00862172364497
         }
       },
       "decision": {
@@ -437,31 +480,31 @@
         "reason": "all_predictions_below_threshold",
         "decided_at_seconds": 33600,
         "prediction_horizon_minutes": 30,
-        "threshold": 35.0,
+        "threshold": 20,
         "travel_weight": 1.0,
         "rooms": {
           "bedroom": {
-            "predicted_pm25": 20.02298509728096,
+            "predicted_pm25": 10.00862172364497,
             "reachable": true,
-            "travel_steps": 15,
-            "travel_seconds": 150,
-            "score": 17.52298509728096,
+            "travel_steps": 13,
+            "travel_seconds": 130,
+            "score": 7.841955056978303,
             "eligible": false
           },
           "kitchen": {
-            "predicted_pm25": 19.199057640865664,
-            "reachable": true,
-            "travel_steps": 0,
-            "travel_seconds": 0,
-            "score": 19.199057640865664,
-            "eligible": false
-          },
-          "living_room": {
-            "predicted_pm25": 10.0,
+            "predicted_pm25": 12.032031548835006,
             "reachable": true,
             "travel_steps": 10,
             "travel_seconds": 100,
-            "score": 8.333333333333334,
+            "score": 10.36536488216834,
+            "eligible": false
+          },
+          "living_room": {
+            "predicted_pm25": 10.000000000046493,
+            "reachable": true,
+            "travel_steps": 0,
+            "travel_seconds": 0,
+            "score": 10.000000000046493,
             "eligible": false
           }
         }
@@ -475,35 +518,44 @@
           "hour": 9,
           "minute": 30,
           "last_measured_pm25": 10.0,
-          "minutes_since_measurement": 50.0
+          "minutes_since_measurement": 0.0,
+          "days_observed": 0,
+          "historical_mean": -1,
+          "polluted_day_ratio": -1
         },
         {
           "room_id": "kitchen",
           "hour": 9,
           "minute": 30,
-          "last_measured_pm25": 22.090458447812285,
-          "minutes_since_measurement": 8.333333333333371
+          "last_measured_pm25": 10.0,
+          "minutes_since_measurement": 60.0,
+          "days_observed": 0,
+          "historical_mean": -1,
+          "polluted_day_ratio": -1
         },
         {
           "room_id": "bedroom",
           "hour": 9,
           "minute": 30,
           "last_measured_pm25": 10.0,
-          "minutes_since_measurement": 55.0
+          "minutes_since_measurement": 55.0,
+          "days_observed": 0,
+          "historical_mean": -1,
+          "polluted_day_ratio": -1
         }
       ],
       "observations": {
         "living_room": {
           "pm25": 10.0,
-          "measured_at_seconds": 31200,
-          "source_minute": 520,
-          "age_seconds": 3000
+          "measured_at_seconds": 34200,
+          "source_minute": 570,
+          "age_seconds": 0
         },
         "kitchen": {
-          "pm25": 22.090458447812285,
-          "measured_at_seconds": 33700,
-          "source_minute": 561,
-          "age_seconds": 500
+          "pm25": 10.0,
+          "measured_at_seconds": 30600,
+          "source_minute": 510,
+          "age_seconds": 3600
         },
         "bedroom": {
           "pm25": 10.0,
@@ -517,9 +569,9 @@
         "target_minute": 600,
         "status": "ok",
         "predictions": {
-          "living_room": 10.0,
-          "kitchen": 17.715956237671424,
-          "bedroom": 20.112367515326095
+          "living_room": 10.000000000046493,
+          "kitchen": 14.804493875583193,
+          "bedroom": 10.048603504839056
         }
       },
       "decision": {
@@ -528,31 +580,31 @@
         "reason": "all_predictions_below_threshold",
         "decided_at_seconds": 34200,
         "prediction_horizon_minutes": 30,
-        "threshold": 35.0,
+        "threshold": 20,
         "travel_weight": 1.0,
         "rooms": {
           "bedroom": {
-            "predicted_pm25": 20.112367515326095,
+            "predicted_pm25": 10.048603504839056,
             "reachable": true,
-            "travel_steps": 15,
-            "travel_seconds": 150,
-            "score": 17.612367515326095,
+            "travel_steps": 13,
+            "travel_seconds": 130,
+            "score": 7.88193683817239,
             "eligible": false
           },
           "kitchen": {
-            "predicted_pm25": 17.715956237671424,
-            "reachable": true,
-            "travel_steps": 0,
-            "travel_seconds": 0,
-            "score": 17.715956237671424,
-            "eligible": false
-          },
-          "living_room": {
-            "predicted_pm25": 10.0,
+            "predicted_pm25": 14.804493875583193,
             "reachable": true,
             "travel_steps": 10,
             "travel_seconds": 100,
-            "score": 8.333333333333334,
+            "score": 13.137827208916526,
+            "eligible": false
+          },
+          "living_room": {
+            "predicted_pm25": 10.000000000046493,
+            "reachable": true,
+            "travel_steps": 0,
+            "travel_seconds": 0,
+            "score": 10.000000000046493,
             "eligible": false
           }
         }
@@ -566,35 +618,44 @@
           "hour": 9,
           "minute": 40,
           "last_measured_pm25": 10.0,
-          "minutes_since_measurement": 60.0
+          "minutes_since_measurement": 0.0,
+          "days_observed": 0,
+          "historical_mean": -1,
+          "polluted_day_ratio": -1
         },
         {
           "room_id": "kitchen",
           "hour": 9,
           "minute": 40,
-          "last_measured_pm25": 12.693774741240444,
-          "minutes_since_measurement": 8.333333333333371
+          "last_measured_pm25": 10.0,
+          "minutes_since_measurement": 70.0,
+          "days_observed": 0,
+          "historical_mean": -1,
+          "polluted_day_ratio": -1
         },
         {
           "room_id": "bedroom",
           "hour": 9,
           "minute": 40,
           "last_measured_pm25": 10.0,
-          "minutes_since_measurement": 65.0
+          "minutes_since_measurement": 65.0,
+          "days_observed": 0,
+          "historical_mean": -1,
+          "polluted_day_ratio": -1
         }
       ],
       "observations": {
         "living_room": {
           "pm25": 10.0,
-          "measured_at_seconds": 31200,
-          "source_minute": 520,
-          "age_seconds": 3600
+          "measured_at_seconds": 34800,
+          "source_minute": 580,
+          "age_seconds": 0
         },
         "kitchen": {
-          "pm25": 12.693774741240444,
-          "measured_at_seconds": 34300,
-          "source_minute": 571,
-          "age_seconds": 500
+          "pm25": 10.0,
+          "measured_at_seconds": 30600,
+          "source_minute": 510,
+          "age_seconds": 4200
         },
         "bedroom": {
           "pm25": 10.0,
@@ -608,128 +669,46 @@
         "target_minute": 610,
         "status": "ok",
         "predictions": {
-          "living_room": 10.0,
-          "kitchen": 11.826893791432381,
-          "bedroom": 21.266928386932776
+          "living_room": 10.031429356960617,
+          "kitchen": 21.81037416630193,
+          "bedroom": 10.091931919234458
         }
       },
       "decision": {
-        "action": "wait",
-        "target_room": null,
-        "reason": "all_predictions_below_threshold",
+        "action": "move",
+        "target_room": "kitchen",
+        "reason": "highest_score",
         "decided_at_seconds": 34800,
         "prediction_horizon_minutes": 30,
-        "threshold": 35.0,
+        "threshold": 20,
         "travel_weight": 1.0,
         "rooms": {
           "bedroom": {
-            "predicted_pm25": 21.266928386932776,
+            "predicted_pm25": 10.091931919234458,
             "reachable": true,
-            "travel_steps": 15,
-            "travel_seconds": 150,
-            "score": 18.766928386932776,
+            "travel_steps": 13,
+            "travel_seconds": 130,
+            "score": 7.925265252567792,
             "eligible": false
           },
           "kitchen": {
-            "predicted_pm25": 11.826893791432381,
-            "reachable": true,
-            "travel_steps": 0,
-            "travel_seconds": 0,
-            "score": 11.826893791432381,
-            "eligible": false
-          },
-          "living_room": {
-            "predicted_pm25": 10.0,
+            "predicted_pm25": 21.81037416630193,
             "reachable": true,
             "travel_steps": 10,
             "travel_seconds": 100,
-            "score": 8.333333333333334,
+            "score": 20.143707499635262,
+            "eligible": true
+          },
+          "living_room": {
+            "predicted_pm25": 10.031429356960617,
+            "reachable": true,
+            "travel_steps": 0,
+            "travel_seconds": 0,
+            "score": 10.031429356960617,
             "eligible": false
           }
         }
       }
-    }
-  ],
-  "purification_evaluation_only": [
-    {
-      "time_seconds": 33120,
-      "pm25": 37.19202524637823
-    },
-    {
-      "time_seconds": 33180,
-      "pm25": 35.07409974421873
-    },
-    {
-      "time_seconds": 33240,
-      "pm25": 33.08219080943771
-    },
-    {
-      "time_seconds": 33300,
-      "pm25": 31.208800456276165
-    },
-    {
-      "time_seconds": 33360,
-      "pm25": 29.44687682912773
-    },
-    {
-      "time_seconds": 33420,
-      "pm25": 27.78978765779463
-    },
-    {
-      "time_seconds": 33480,
-      "pm25": 26.231295292155846
-    },
-    {
-      "time_seconds": 33540,
-      "pm25": 24.765533222272573
-    },
-    {
-      "time_seconds": 33600,
-      "pm25": 23.386983995547354
-    },
-    {
-      "time_seconds": 33660,
-      "pm25": 22.090458447812285
-    },
-    {
-      "time_seconds": 33720,
-      "pm25": 20.871076170167452
-    },
-    {
-      "time_seconds": 33780,
-      "pm25": 19.724247138042486
-    },
-    {
-      "time_seconds": 33840,
-      "pm25": 18.645654433328957
-    },
-    {
-      "time_seconds": 33900,
-      "pm25": 17.631237994545884
-    },
-    {
-      "time_seconds": 33960,
-      "pm25": 16.677179333870402
-    },
-    {
-      "time_seconds": 34020,
-      "pm25": 15.779887163505114
-    },
-    {
-      "time_seconds": 34080,
-      "pm25": 14.93598387727656
-    },
-    {
-      "time_seconds": 34140,
-      "pm25": 14.142292836578603
-    },
-    {
-      "time_seconds": 34200,
-      "pm25": 13.395826412802174
-    },
-    {
-      "time_seconds": 34260,
-      "pm25": 12.693774741240444
     }
   ],
   "events": [
@@ -748,80 +727,63 @@
       "source_minute": 520
     },
     {
-      "time_seconds": 31200,
+      "time_seconds": 31800,
+      "type": "measurement",
+      "room": "living_room",
+      "reason": "periodic",
+      "pm25": 10.0,
+      "measured_at_seconds": 31800,
+      "source_minute": 530
+    },
+    {
+      "time_seconds": 32400,
+      "type": "measurement",
+      "room": "living_room",
+      "reason": "periodic",
+      "pm25": 10.0,
+      "measured_at_seconds": 32400,
+      "source_minute": 540
+    },
+    {
+      "time_seconds": 33000,
+      "type": "measurement",
+      "room": "living_room",
+      "reason": "periodic",
+      "pm25": 10.0,
+      "measured_at_seconds": 33000,
+      "source_minute": 550
+    },
+    {
+      "time_seconds": 33600,
+      "type": "measurement",
+      "room": "living_room",
+      "reason": "periodic",
+      "pm25": 10.0,
+      "measured_at_seconds": 33600,
+      "source_minute": 560
+    },
+    {
+      "time_seconds": 34200,
+      "type": "measurement",
+      "room": "living_room",
+      "reason": "periodic",
+      "pm25": 10.0,
+      "measured_at_seconds": 34200,
+      "source_minute": 570
+    },
+    {
+      "time_seconds": 34800,
+      "type": "measurement",
+      "room": "living_room",
+      "reason": "periodic",
+      "pm25": 10.0,
+      "measured_at_seconds": 34800,
+      "source_minute": 580
+    },
+    {
+      "time_seconds": 34800,
       "type": "move_requested",
       "destination": "kitchen"
-    },
-    {
-      "time_seconds": 31300,
-      "type": "arrival",
-      "room": "kitchen"
-    },
-    {
-      "time_seconds": 31300,
-      "type": "measurement",
-      "room": "kitchen",
-      "reason": "arrival",
-      "pm25": 10.0,
-      "measured_at_seconds": 31300,
-      "source_minute": 521
-    },
-    {
-      "time_seconds": 31900,
-      "type": "measurement",
-      "room": "kitchen",
-      "reason": "periodic",
-      "pm25": 10.0,
-      "measured_at_seconds": 31900,
-      "source_minute": 531
-    },
-    {
-      "time_seconds": 32500,
-      "type": "measurement",
-      "room": "kitchen",
-      "reason": "periodic",
-      "pm25": 12.97,
-      "measured_at_seconds": 32500,
-      "source_minute": 541
-    },
-    {
-      "time_seconds": 33100,
-      "type": "measurement",
-      "room": "kitchen",
-      "reason": "periodic",
-      "pm25": 38.11453848516121,
-      "measured_at_seconds": 33100,
-      "source_minute": 551
-    },
-    {
-      "time_seconds": 33100,
-      "type": "purification_on",
-      "room": "kitchen",
-      "reason": "measurement"
-    },
-    {
-      "time_seconds": 33700,
-      "type": "measurement",
-      "room": "kitchen",
-      "reason": "periodic",
-      "pm25": 22.090458447812285,
-      "measured_at_seconds": 33700,
-      "source_minute": 561
-    },
-    {
-      "time_seconds": 34300,
-      "type": "measurement",
-      "room": "kitchen",
-      "reason": "periodic",
-      "pm25": 12.693774741240444,
-      "measured_at_seconds": 34300,
-      "source_minute": 571
-    },
-    {
-      "time_seconds": 34300,
-      "type": "purification_off",
-      "room": "kitchen",
-      "reason": "measurement"
     }
   ]
 }

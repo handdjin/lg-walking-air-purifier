@@ -1,4 +1,4 @@
-"""2D map, A* pathfinding, and stepwise movement."""
+"""2D map, D* Lite pathfinding, and stepwise movement."""
 
 from .simulator import Simulator
 

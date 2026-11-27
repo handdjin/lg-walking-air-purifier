@@ -8,7 +8,7 @@ import math
 from collections.abc import Mapping
 
 from .house_map import HouseMap
-from .pathfinding import NoPathError, find_path
+from .pathfinding import DStarLite, NoPathError
 
 
 def _number(value, name):
@@ -45,8 +45,13 @@ def choose_destination(simulator, predictions, *, threshold=35.0,
         predicted = float(predictions[room])
         # Stay in place when selecting the current room.
         try:
-            path = ([tuple(state["position"])] if room == state["current_room"] else
-                    find_path(house, state["position"], house.rooms[room].target))
+            if room == state["current_room"]:
+                path = [tuple(state["position"])]
+            else:
+                # Use the same run-time blocked cells as Simulator.move_to().
+                planner = DStarLite(house, state["position"], house.rooms[room].target)
+                planner.update_cells(blocked=state.get("blocked_cells", ()))
+                path = planner.path()
         except NoPathError:
             rooms[room] = {"predicted_pm25": predicted, "reachable": False,
                            "travel_steps": None, "travel_seconds": None,

@@ -4,8 +4,8 @@ from collections import deque
 from copy import deepcopy
 
 from .environment import AirEnvironment, MINUTES_PER_DAY, ROOM_NAMES
-from .house_map import load_house_map
-from .pathfinding import find_path
+from .house_map import coordinate, load_house_map
+from .pathfinding import DStarLite, NoPathError
 
 
 TICK_SECONDS = 10
@@ -33,6 +33,7 @@ class Simulator:
             "events": None if events is None else tuple(events),
         }
         self._initial_day_index = day_index
+        self._initial_late_dinner = late_dinner
         self.reset()
 
     def reset(self):
@@ -40,12 +41,20 @@ class Simulator:
         self.simulation_day = 1
         self.previous_days = deque(maxlen=14)
         self._environment_options["day_index"] = self._initial_day_index
+        self._environment_options["late_dinner"] = self._initial_late_dinner
         return self._begin_day()
 
-    def next_day(self):
-        """Carry measured history into the next simulated day of this home."""
+    def next_day(self, *, late_dinner=None):
+        """Carry measured history into the next simulated day of this home.
+
+        late_dinner optionally changes the generated schedule from this day on.
+        """
         if not self.get_state()["finished"]:
             raise ValueError("The current day is still running.")
+        if late_dinner is not None:
+            if type(late_dinner) is not bool:
+                raise ValueError("late_dinner must be True or False.")
+            self._environment_options["late_dinner"] = late_dinner
         readings = {room: [] for room in ROOM_NAMES}
         for entry in self._history:
             if entry["type"] == "measurement" and entry["time_seconds"] < 86400:
@@ -62,6 +71,8 @@ class Simulator:
         self._position = self._map.start
         self._destination = None
         self._path = deque()
+        self._planner = None      # D* Lite instance kept for the active route
+        self._blocked = set()     # Walkable cells closed at run time
         self._environment = environment
         self._seconds = 0
         self._running = False
@@ -145,6 +156,7 @@ class Simulator:
             "destination": self._destination,
             "status": "moving" if self._path else ("purifying" if self._purifying else "idle"),
             "remaining_path": [list(point) for point in self._path],
+            "blocked_cells": [list(cell) for cell in sorted(self._blocked)],
             "remaining_steps": len(self._path),
             "simulation_time_seconds": self._seconds,
             "environment_minute": self._environment.minute,
@@ -168,13 +180,63 @@ class Simulator:
         if self._path:
             raise ValueError("Wait until the current route is complete.")
 
-        path = find_path(
-            self._map,
-            self._position,
-            self._map.rooms[room].target,
-        )
-
+        path = self._plan(self._map.rooms[room].target).path()
         return (len(path) - 1) * self._tick_seconds
+
+    def _plan(self, goal):
+        """Create a D* Lite planner from the current position that avoids blocked cells."""
+        planner = DStarLite(self._map, self._position, goal)
+        planner.update_cells(blocked=self._blocked)
+        return planner
+
+    def set_blocked(self, cells, blocked=True):
+        """Close (blocked=True) or reopen (blocked=False) walkable cells at run time.
+
+        Room targets and the purifier's current cell cannot be closed. Invalid input
+        preserves the state. During travel, D* Lite repairs the remaining route from
+        the current cell. If no route remains, the purifier stops where it is.
+        """
+        if not isinstance(blocked, bool):
+            raise ValueError("blocked must be True or False.")
+        cells = [coordinate(cell) for cell in cells]
+        targets = {room.target for room in self._map.rooms.values()}
+        for cell in cells:
+            if not self._map.is_walkable(cell):
+                raise ValueError(f"{list(cell)} is not a walkable map cell.")
+            if blocked and (cell in targets or cell == self._position):
+                raise ValueError(f"{list(cell)} is a room target or the purifier's position.")
+        changed = sorted(set(cells) - self._blocked if blocked else set(cells) & self._blocked)
+        if not changed:
+            return self.get_state()
+        if blocked:
+            self._blocked.update(changed)
+        else:
+            self._blocked.difference_update(changed)
+        self._record("cells_blocked" if blocked else "cells_cleared",
+                     cells=[list(cell) for cell in changed])
+        if self._planner is not None:
+            if blocked:
+                self._planner.update_cells(blocked=changed)
+            else:
+                self._planner.update_cells(cleared=changed)
+            self._replan()
+        return self.get_state()
+
+    def _replan(self):
+        """Repair the active route after cells changed, or stop if it is cut off."""
+        try:
+            route = deque(self._planner.path()[1:])
+        except NoPathError:
+            self._path = deque()
+            self._planner = None
+            self._record("route_blocked", destination=self._destination,
+                         position=list(self._position))
+            self._measure_current_room("route_blocked")
+            return
+        if route != self._path:
+            self._path = route
+            self._record("replanned", destination=self._destination,
+                         remaining_steps=len(route))
 
     def move_to(self, room: str):
         """Reserve a route. Invalid and unreachable destinations preserve the current state."""
@@ -182,12 +244,14 @@ class Simulator:
             raise ValueError(f"Invalid room ID: {room!r}")
         if self._seconds >= MINUTES_PER_DAY * 60:
             raise ValueError("The day has ended. Call reset() before moving.")
-        path = find_path(self._map, self._position, self._map.rooms[room].target)
+        planner = self._plan(self._map.rooms[room].target)
+        path = planner.path()
         # Preserve movement and purification state until route planning succeeds.
         if path[1:]:
             self._set_purifying(False, "move_requested")
         self._destination = room
         self._path = deque(path[1:])
+        self._planner = planner if self._path else None
         self._record("move_requested", destination=room)
         if not self._path:
             self._measure_current_room("arrival")
@@ -214,6 +278,10 @@ class Simulator:
         self._exposure = exposure
         if moving:
             self._position = self._path.popleft()
+            if self._path:
+                self._planner.move_start(self._position)
+            else:
+                self._planner = None
         self._seconds = next_seconds
         if moving and not self._path:
             self.last_arrival_seconds = self._seconds

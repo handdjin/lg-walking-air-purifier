@@ -15,7 +15,7 @@ from simulation import Simulator
 from simulation.compare_patrol import (
     AI_MOVE_THRESHOLD,
     DEPARTURE_INTERVAL_SECONDS,
-    ai_tick,
+    AutoModePolicy,
     fixed_patrol_tick,
 )
 from simulation.environment import generate_daily_events
@@ -211,8 +211,16 @@ def main():
             "living/kitchen/bedroom"
         ),
         "ai_policy": (
-            "One-day AI baseline, 10-minute forecasts, "
-            f"movement threshold {AI_MOVE_THRESHOLD}, travel weight 1"
+            "Backend Auto Mode (simulation.compare_patrol.AutoModePolicy): "
+            "initial patrol, 10-minute forecasts, "
+            f"movement threshold {AI_MOVE_THRESHOLD}, travel weight 1, "
+            "10-minute stay after arrival, stale-reading revisit "
+            "after 120 minutes (180 after day 7)"
+        ),
+        "day_sequence": (
+            "scenarios run as consecutive days of one home per policy; "
+            "Simulator.next_day() carries up to 14 previous days of "
+            "measurements into the history features"
         ),
         "initialization": (
             "same initial state and living-room observation; "
@@ -290,25 +298,45 @@ def main():
     all_curves = []
     schedules = []
 
+    # One home per policy: run the scenarios as consecutive days so that
+    # forecasts can use previous-day measurements, as in the backend.
+    first_day, first_late = SCENARIOS[0]
+    options = {
+        "seed": EVENT_SEED,
+        "day_index": first_day,
+        "late_dinner": first_late,
+    }
+    auto = Simulator(**options)
+    patrol = Simulator(**options)
+    policy = AutoModePolicy(predictor)
+
     for day, late in SCENARIOS:
         suffix = "late" if late else "normal"
         scenario_id = f"day_{day + 1:02d}_{suffix}"
+
+        if day != first_day:
+            auto.next_day(late_dinner=late)
+            patrol.next_day(late_dinner=late)
 
         events = generate_daily_events(
             EVENT_SEED,
             day,
             late_dinner=late,
         )
+        expected_events = [
+            {
+                "room": event.room,
+                "activity": event.activity,
+                "start_minute": event.start_minute,
+                "end_minute": event.end_minute,
+            }
+            for event in events
+        ]
 
-        options = {
-            "seed": EVENT_SEED,
-            "day_index": day,
-            "late_dinner": late,
-            "events": events,
-        }
-
-        auto = Simulator(**options)
-        patrol = Simulator(**options)
+        if auto.get_scenario()["events"] != expected_events:
+            raise AssertionError(
+                "The simulated day does not use the scenario schedule."
+            )
 
         conditions_match = (
             auto.get_state() == patrol.get_state()
@@ -331,8 +359,10 @@ def main():
             ("ai", auto),
             ("fixed_patrol", patrol),
         ]:
+            before = dict(policy.counts)
+
             if name == "ai":
-                tick = lambda: ai_tick(sim, predictor)
+                tick = lambda: policy.tick(sim)
             else:
                 tick = lambda: fixed_patrol_tick(sim)
 
@@ -342,6 +372,13 @@ def main():
                 scenario_id,
                 name,
             )
+
+            # Fixed patrol makes neither kind of AI move.
+            for key in ["forecast_moves", "stale_revisits"]:
+                metrics[key] = (
+                    policy.counts[key] - before[key]
+                    if name == "ai" else 0
+                )
 
             all_metrics.append(metrics)
             all_rooms.extend(rooms)

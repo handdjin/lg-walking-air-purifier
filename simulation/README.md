@@ -26,19 +26,21 @@ python3 -m unittest discover -s simulation/tests -v
 |---|---|
 | `house_map.json` | Defines rooms, walls, doors, obstacles, start position, and target cells |
 | `house_map.py` | Validates the map and identifies the room at a coordinate |
-| `pathfinding.py` | A* shortest-path search |
+| `pathfinding.py` | D* Lite shortest-path search with incremental replanning |
 | `simulator.py` | Coordinates movement, time, measurements, purification, start, pause, and reset |
 | `environment.py` | Provides air quality calculations and activity schedules for use by the simulator and data generator |
 | `controller.py` | Selects a destination using predicted air quality and travel time |
 | `controller_demo.py` | Demonstrates movement and waiting using sample forecasts |
+| `compare_patrol.py` | `AutoModePolicy` mirrors the backend Auto Mode rules for evaluation; also compares it with a 20-minute fixed patrol for one day |
 | `__init__.py` | `Simulator` public interface |
 | `demo.py` | Demonstrates the map and navigation |
 | `integration_demo.py` | Shows integrated behavior and comparison logs |
 | `environment_demo.py` | Demonstrates environmental calculations in isolation |
-| `tests/test_navigation.py` | Tests the map, shortest paths, and movement |
+| `tests/test_navigation.py` | Tests the map, shortest paths, movement, and D* Lite replanning around run-time obstacles |
 | `tests/test_environment.py` | Tests air quality calculations, activities, and reproducibility |
 | `tests/test_integration.py` | Tests interactions between time, control, measurements, and purification |
 | `tests/test_controller.py` | Tests destination selection, error handling, and movement |
+| `tests/test_compare_patrol.py` | Tests the Auto Mode mirror (initial patrol, stay after arrival, stale-reading revisit) and `next_day(late_dinner=...)` |
 
 ## Basic usage
 
@@ -101,8 +103,9 @@ An arrival between minute boundaries samples the most recently calculated concen
 | `start()` | Enable simulation and return the state |
 | `pause()` | Pause simulation and return the state |
 | `reset()` | Reset the position, route, destination, clock, environment, observations, and history, then return the state |
-| `next_day()` | Start the next virtual day after the current day ends and keep up to 14 previous days of measurements |
+| `next_day(late_dinner=None)` | Start the next virtual day after the current day ends and keep up to 14 previous days of measurements. `late_dinner` optionally switches the generated schedule from that day on; `reset()` restores the original setting |
 | `move_to(room)` | Reserve a route from the current position and return the state |
+| `set_blocked(cells, blocked=True)` | Close or reopen walkable cells at run time and replan an active route |
 | `step()` | Advance one tick if running and return the state |
 | `get_history()` | Return a copy of the command, arrival, measurement, and purification transition history |
 | `get_ground_truth()` | Return a copy of the internal concentrations for evaluation |
@@ -120,6 +123,7 @@ An arrival between minute boundaries samples the most recently calculated concen
 | `destination` | Requested destination. Retained after arrival and reset to `null` |
 | `status` | `moving`, `idle`, `purifying` indicate the current activity |
 | `remaining_path`, `remaining_steps` | Remaining route and cell count, excluding the current cell |
+| `blocked_cells` | Cells closed with `set_blocked()`. Empty by default |
 | `simulation_time_seconds` | Elapsed simulated seconds |
 | `environment_minute` | Last simulated minute processed by the environment |
 | `tick_seconds` | Simulated seconds per tick. Default: 10 |
@@ -207,6 +211,49 @@ observation = env.sample_current_room("kitchen")
 
 Doorways at `[7, 3]` and `[7, 8]` belong to no room. Map edits take effect when a new simulator is created. Clients can display the same map using `get_map()`.
 
+## Pathfinding (D* Lite)
+
+`pathfinding.py` implements D* Lite on the four-connected grid with unit movement cost and a Manhattan-distance heuristic. The search runs backward from the goal and keeps its `g`/`rhs` estimates, so later changes repair only the affected cells instead of replanning from scratch.
+
+```python
+from simulation.house_map import load_house_map
+from simulation.pathfinding import DStarLite, find_path
+
+house = load_house_map()
+path = find_path(house, house.start, house.rooms["kitchen"].target)  # One-shot query
+
+planner = DStarLite(house, house.start, house.rooms["bedroom"].target)
+route = planner.path()
+planner.move_start(route[3])               # The purifier advanced three cells
+planner.update_cells(blocked=[(7, 8)])     # The bedroom door closed
+planner.update_cells(cleared=[(7, 8)])     # The door reopened
+route = planner.path()                     # Repaired shortest path from the new start
+```
+
+- `find_path()` returns the shortest path including both endpoints and raises `NoPathError` when the goal is unreachable. The simulator and controller use this interface.
+- `update_cells()` closes or reopens walkable map cells at run time. The goal cannot be blocked. `move_start()` must name a passable cell.
+- When several shortest paths exist, the route may differ from the earlier A* implementation, but its length and travel time are the same.
+- `Simulator` keeps one `DStarLite` instance per active route and calls `move_start()` after each step, so replanning during travel reuses the existing search.
+
+### Run-time obstacles
+
+No cells are blocked by default, so routes and results match the static map. Call `set_blocked()` to simulate a closed door or a temporary obstacle.
+
+```python
+sim = Simulator()
+sim.start()
+sim.move_to("kitchen")
+sim.step()
+sim.set_blocked([(7, 3)])                  # Close the kitchen door during travel
+sim.set_blocked([(7, 3)], blocked=False)   # Reopen it
+```
+
+- Only walkable cells (`.` or `D`) can be blocked. Room targets and the purifier's current cell cannot. Invalid input raises `ValueError` and preserves the state.
+- If a change affects the active route, D* Lite repairs the remaining route from the current cell and records `replanned`. Reopening a cell can also shorten the route.
+- If no route remains, the purifier stops where it is, keeps `destination`, records `route_blocked`, and measures if it stopped inside a room. A later `move_to()` raises `NoPathError` until a route opens.
+- `move_to()`, `estimate_travel_seconds()`, and `choose_destination()` all avoid blocked cells. `get_state()["blocked_cells"]` lists them.
+- `reset()` and `next_day()` clear all blocked cells. Blocking and reopening are recorded as `cells_blocked` and `cells_cleared` in the history.
+
 ## Forecast-based destination selection (initial policy)
 
 `controller.py` selects a destination using externally supplied **30-minute forecasts** made at the same time. Training and inference take place outside the controller. `controller_demo.py` uses example predictions to demonstrate its behavior.
@@ -217,7 +264,7 @@ python3 -m simulation.controller_demo
 
 ### Selection rules
 
-1. Find an A* route from the current position to each room's target. Selecting the current room means staying in place, so its travel time is zero.
+1. Find a D* Lite route from the current position to each room's target. Selecting the current room means staying in place, so its travel time is zero.
 2. Travel time in seconds equals the number of cells to move times `tick_seconds` (default 10 seconds).
 3. Consider reachable rooms whose predicted PM is at least `threshold`, initially 35.
 4. Score = predicted PM − travel time in minutes × `travel_weight`. The default weight of 1 subtracts one point per minute of travel.
