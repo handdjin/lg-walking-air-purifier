@@ -118,6 +118,7 @@ An arrival between minute boundaries samples the most recently calculated concen
 
 | Field | Meaning |
 |---|---|
+| `simulation_day` | Virtual day number. Starts at 1, increases with `next_day()`, and returns to 1 after `reset()` |
 | `current_room`, `room_name` | Current room ID and display name. In a doorway both are `null` |
 | `position` | `[x, y]` coordinates |
 | `destination` | Requested destination. Retained after arrival and reset to `null` |
@@ -129,6 +130,7 @@ An arrival between minute boundaries samples the most recently calculated concen
 | `tick_seconds` | Simulated seconds per tick. Default: 10 |
 | `is_running` | Whether the simulation is running |
 | `is_purifying` | Whether the running purifier is stationary and actively purifying |
+| `is_measuring` | Whether a reading was taken in the last 20 simulated seconds while stationary. The app uses it for the measuring indicator |
 | `finished` | Whether the simulated day has ended |
 | `observations` | Last measurement in each room |
 
@@ -147,8 +149,9 @@ Keep a simulator instance alive to handle commands and state queries. The host a
 | Start or resume | `start()` |
 | Pause | `pause()` |
 | Reset | `reset()` |
-| Set destination | `next_day()` | Start the next virtual day after the current day ends and keep up to 14 previous days of measurements |
-| `move_to(room)` |
+| Set destination | `move_to(room)` |
+| Start the next day | `next_day()` |
+| Close or reopen cells | `set_blocked(cells, blocked=True)` |
 | Advance one step | `step()` |
 | Read state or map | `get_state()`, `get_map()` |
 
@@ -319,4 +322,4 @@ The controller selects a destination and reserves a route while stationary. An o
 
 Convert external forecasts to the input format above. Use `age_seconds / 60` for elapsed minutes and match the units used in training. Keep future events and unobserved concentrations out of the forecast inputs. Predictions carry no timestamp, so the caller must ensure they correspond to the current state.
 
-Model inference, the decision interval, replanning during travel, the HTTP API, and rendering are handled outside this module. The server must serialize decisions, route reservations, and other state changes.
+Model inference, the decision interval, choosing a new destination during travel, the HTTP API, and rendering are handled outside this module. Repairing a route around run-time obstacles is handled by `Simulator` (see Pathfinding). The server must serialize decisions, route reservations, and other state changes.
